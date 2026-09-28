@@ -32,8 +32,6 @@ export const savedItemType = defineType({
           {title: 'Repository', value: 'repo'},
           {title: 'URL', value: 'url'},
           {title: 'Image', value: 'image'},
-          {title: 'Screenshot', value: 'screenshot'},
-          {title: 'PDF', value: 'pdf'},
           {title: 'Document', value: 'document'},
           {title: 'Note', value: 'note'},
           {title: 'Other', value: 'other'},

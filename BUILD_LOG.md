@@ -140,3 +140,120 @@ The future Next.js user interface will control these fields automatically and on
 
 The Sanity schema defines how Echo Shelf content is structured in Content Lake, while the Next.js frontend can provide a completely different and simplified experience for users.
 
+## 2026-09-28 — Add Item Flow
+
+### What I Built
+
+Built the first real Echo Shelf user flow for adding saved content from the Next.js application.
+
+The `/add` page supports the finalized content types:
+
+- Article
+- Video
+- Repository
+- URL
+- Image
+- Document
+- Note
+- Other
+
+Similar types were intentionally merged before the first commit:
+
+- Image and Screenshot → Image
+- PDF and Document → Document
+
+The form dynamically changes the required source inputs depending on the selected content type.
+
+### Dynamic Source Inputs
+
+- Article / Video / Repository / URL → source URL + optional preview image
+- Image → required image upload
+- Document → required document/file upload + optional preview image
+- Note → required text content + optional preview image
+- Other → optional URL, file, text, and preview image
+
+### Sanity Write Integration
+
+Created a dedicated server-side Sanity write client.
+
+All Sanity mutations and asset uploads happen on the server.
+
+A private `SANITY_API_WRITE_TOKEN` is stored inside `.env.local` and is not exposed to the browser.
+
+### Asset Handling
+
+Echo Shelf can upload:
+
+- Images to Sanity image assets
+- Documents/files to Sanity file assets
+
+The resulting asset references are stored inside the `savedItem` document.
+
+### Automatic Fields
+
+The application automatically manages:
+
+- `savedAt`
+- `isFavorite`
+
+Internal fields such as `lastOpenedAt`, `relatedItems`, and `knowledgeCluster` are not exposed in the user-facing Add Item form.
+
+### Tag Input
+
+Tags use an interactive chip-based input.
+
+Users can:
+
+- Type a tag and press Enter to add it
+- Use comma to add a tag
+- Remove individual tags using an × button
+- Use Backspace on an empty input to remove the last tag
+
+Duplicate tags are prevented case-insensitively.
+
+Tags are stored in Sanity as a `string[]`.
+
+Pressing Enter while entering tags does not submit the form.
+
+### Validation & UX
+
+Added:
+
+- Required-field validation
+- Dynamic content-type validation
+- URL validation
+- Interactive tag input
+- Duplicate-tag prevention
+- Loading state
+- Duplicate submission prevention
+- Success and error feedback
+- Responsive mobile and desktop layout
+- Safe Enter-key behavior
+
+### Verification
+
+Verified the complete flow:
+
+Next.js Add Item page
+→ dynamic source fields
+→ server-side validation
+→ Sanity asset upload
+→ savedItem document creation
+→ document visible in Sanity Studio
+
+Verified:
+
+- URL-based items
+- Image-based items
+- Document-based items
+- Tag creation and removal
+- Sanity tag storage as `string[]`
+- TypeScript checks
+- ESLint checks
+
+### Learning
+
+This milestone connected the public Next.js application to Sanity mutations safely.
+
+Sanity Studio is now only one way to manage content; Echo Shelf can create structured Content Lake documents directly through its own user interface.
+
