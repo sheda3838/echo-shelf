@@ -99,3 +99,44 @@ Sanity Studio acts as the content-management interface, while the schema defines
 
 The default Blog schema is only temporary and will later be replaced with schemas designed specifically for Echo Shelf.
 
+## 2026-09-28 — Echo Shelf Saved Item Schema
+
+### What I Did
+
+Replaced the default Sanity Blog starter schemas with the first real Echo Shelf document type: `savedItem`.
+
+The schema currently stores:
+
+- Title
+- Description
+- Content type
+- Source URL, file, or text
+- Optional preview image
+- Tags
+- Saved date
+- Last opened date
+- Favorite state
+- Related items
+- Knowledge cluster
+
+I also customized the Sanity Studio structure so the sidebar is now specific to Echo Shelf and currently displays only:
+
+- Saved Items
+
+### Design Decision
+
+The Sanity schema contains some internal fields that normal users should not manually manage, such as:
+
+- `savedAt`
+- `lastOpenedAt`
+- `relatedItems`
+- `knowledgeCluster`
+
+These fields may still be visible in Sanity Studio because Studio is the content-management interface.
+
+The future Next.js user interface will control these fields automatically and only show the inputs relevant to the selected content type.
+
+### Learning
+
+The Sanity schema defines how Echo Shelf content is structured in Content Lake, while the Next.js frontend can provide a completely different and simplified experience for users.
+
