@@ -257,3 +257,77 @@ This milestone connected the public Next.js application to Sanity mutations safe
 
 Sanity Studio is now only one way to manage content; Echo Shelf can create structured Content Lake documents directly through its own user interface.
 
+## 2026-09-28 — Smart Capture AI Helper
+
+### What I Built
+
+Integrated Groq into Echo Shelf as the first AI helper.
+
+Smart Capture can analyze available text context and generate editable metadata for a saved item.
+
+AI currently suggests:
+
+- Title
+- Description
+- Tags
+
+### Current Supported Flow
+
+For text-based content such as Notes:
+
+User provides source text
+→ Echo Shelf sends the usable context to Groq
+→ Groq returns structured metadata
+→ Generated values populate the form
+→ User can review/edit before saving
+
+### User Control
+
+AI only assists with metadata generation.
+
+Generated content is not saved automatically.
+
+The user can:
+
+- Edit the generated title
+- Edit the generated description
+- Add/remove tags
+- Clear the AI-generated suggestions entirely
+
+### Security
+
+The Groq API key is stored server-side in `.env.local` as:
+
+`GROQ_API_KEY`
+
+It is never exposed to the browser.
+
+### Limitation Identified
+
+Groq cannot understand a URL, image, PDF, or other source simply from the source reference itself.
+
+For these content types, Echo Shelf will need a source-extraction layer before sending meaningful text to Groq.
+
+### Verification
+
+Smart Capture was tested successfully with note content about Docker networking.
+
+Groq generated relevant:
+
+- Title
+- Description
+- Tags
+
+The generated metadata remained fully editable before saving.
+
+### Learning
+
+The AI layer works best when it receives real extracted context rather than raw links or file references.
+
+This led to the next architectural requirement:
+
+Source
+→ Extraction layer
+→ Groq
+→ Structured metadata
+
