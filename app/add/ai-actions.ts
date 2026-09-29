@@ -1,6 +1,7 @@
 "use server";
 
 import { Groq } from "groq-sdk";
+import { extractWebArticle } from "@/lib/extractors/webArticle";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -51,11 +52,13 @@ export async function generateSmartCaptureAction(
     };
   }
 
-  // 3. Assess context sufficiency to avoid hallucinations
+  // 3. Assess context and perform source extraction when applicable
   const cleanUrl = sourceUrl?.trim() || "";
   const cleanText = sourceText?.trim() || "";
   const cleanTitle = existingTitle?.trim() || "";
   const cleanDesc = existingDescription?.trim() || "";
+
+  const contextParts: string[] = [];
 
   if (contentType === "note") {
     if (!cleanText || cleanText.length < 10) {
@@ -64,7 +67,47 @@ export async function generateSmartCaptureAction(
         message: "Please provide a bit more note text for Smart Capture to analyze (at least 10 characters).",
       };
     }
-  } else if (["article", "video", "repo", "url"].includes(contentType)) {
+    contextParts.push(`Content Type: Note`);
+    if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+    if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+    contextParts.push(`Note Content:\n${cleanText}`);
+  } else if (contentType === "article" || contentType === "url") {
+    if (!cleanUrl && !cleanText && !cleanDesc) {
+      return {
+        success: false,
+        message: "Please enter a webpage URL for Smart Capture to read.",
+      };
+    }
+
+    if (cleanUrl) {
+      // Perform server-side readable webpage extraction
+      const extraction = await extractWebArticle(cleanUrl, contentType);
+      if (!extraction.success) {
+        return {
+          success: false,
+          message: extraction.error,
+        };
+      }
+
+      const extracted = extraction.data;
+      contextParts.push(`Source type: ${contentType === "article" ? "Article" : "Generic Webpage"}`);
+      contextParts.push(`Source URL: ${extracted.sourceUrl}`);
+      if (extracted.title) contextParts.push(`Extracted title: ${extracted.title}`);
+      if (extracted.siteName) contextParts.push(`Site: ${extracted.siteName}`);
+      if (extracted.author) contextParts.push(`Author: ${extracted.author}`);
+      if (extracted.excerpt) contextParts.push(`Excerpt: ${extracted.excerpt}`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
+      contextParts.push(`Main text:\n${extracted.text}`);
+    } else {
+      // User did not provide URL but provided notes/text
+      contextParts.push(`Content Type: ${contentType === "article" ? "Article" : "URL"}`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+    }
+  } else if (contentType === "video" || contentType === "repo") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
         success: false,
@@ -72,26 +115,20 @@ export async function generateSmartCaptureAction(
       };
     }
 
-    // Check if only a bare domain/short URL without path was provided and no text context
+    // Check if only bare URL was provided without text context
     if (cleanUrl && !cleanText && !cleanDesc) {
-      try {
-        const parsed = new URL(cleanUrl);
-        const pathSegments = parsed.pathname.split("/").filter((s) => s.length > 0);
-        // If domain has no path, or just "/" or single-letter slug
-        if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0].length < 3)) {
-          return {
-            success: false,
-            message:
-              "Only a basic URL was provided. Please add some notes, key takeaways, or an excerpt so the AI has enough context.",
-          };
-        }
-      } catch {
-        return {
-          success: false,
-          message: "Please enter a valid source URL or provide some text notes.",
-        };
-      }
+      return {
+        success: false,
+        message:
+          `Dedicated AI extraction for ${contentType === "video" ? "videos" : "repositories"} will be added later. Please add some notes, key takeaways, or an excerpt so the AI has context.`,
+      };
     }
+
+    contextParts.push(`Content Type: ${contentType}`);
+    if (cleanUrl) contextParts.push(`Source URL: ${cleanUrl}`);
+    if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+    if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+    if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
   } else if (contentType === "other") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
@@ -99,14 +136,12 @@ export async function generateSmartCaptureAction(
         message: "Please provide some source text, notes, or URL context.",
       };
     }
+    contextParts.push(`Content Type: Other`);
+    if (cleanUrl) contextParts.push(`Source URL: ${cleanUrl}`);
+    if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+    if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+    if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
   }
-
-  // 4. Build prompt context safely
-  const contextParts: string[] = [`Content Type: ${contentType}`];
-  if (cleanUrl) contextParts.push(`Source URL: ${cleanUrl}`);
-  if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
-  if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
-  if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
 
   const userPrompt = contextParts.join("\n\n");
 
