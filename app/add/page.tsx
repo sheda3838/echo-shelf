@@ -4,6 +4,10 @@ import React, { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import { saveItemAction, type ContentType } from "./actions";
 import { generateSmartCaptureAction } from "./ai-actions";
+import {
+  lookupConnectionCandidatesAction,
+  type PreSaveCandidate,
+} from "./connection-actions";
 
 interface FormErrors {
   contentType?: string;
@@ -68,6 +72,75 @@ export default function AddItemPage() {
   const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const previewImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Smart Connections candidate suggestions state (Phase 2A)
+  const [connectionCandidates, setConnectionCandidates] = useState<PreSaveCandidate[]>([]);
+  const [isShortlisting, setIsShortlisting] = useState(false);
+  const [hasSearchedCandidates, setHasSearchedCandidates] = useState(false);
+  const [candidateFeedback, setCandidateFeedback] = useState<string | null>(null);
+  const activeCandidateRequestIdRef = useRef<number>(0);
+
+  // Invalidate candidate shortlist when metadata or source changes
+  function invalidateCandidates() {
+    activeCandidateRequestIdRef.current++;
+    if (isShortlisting) {
+      setIsShortlisting(false);
+    }
+    setConnectionCandidates([]);
+    setHasSearchedCandidates(false);
+    setCandidateFeedback(null);
+  }
+
+  // Pre-save candidate lookup runner
+  async function runCandidateLookup(overrideMetadata?: {
+    title: string;
+    description: string;
+    tags: string[];
+  }) {
+    const metadataToUse = overrideMetadata || {
+      title: title.trim(),
+      description: description.trim(),
+      tags,
+    };
+
+    if (!metadataToUse.title && !metadataToUse.description) {
+      setCandidateFeedback("Please enter a title or description first to find related items.");
+      return;
+    }
+
+    const thisRequestId = ++activeCandidateRequestIdRef.current;
+    setIsShortlisting(true);
+    setCandidateFeedback(null);
+
+    try {
+      const res = await lookupConnectionCandidatesAction({
+        title: metadataToUse.title,
+        description: metadataToUse.description,
+        tags: metadataToUse.tags,
+      });
+
+      if (thisRequestId !== activeCandidateRequestIdRef.current) {
+        return;
+      }
+
+      if (res.success) {
+        setConnectionCandidates(res.candidates);
+        setHasSearchedCandidates(true);
+      } else {
+        setCandidateFeedback(res.message || "Could not check related items right now.");
+        setHasSearchedCandidates(true);
+      }
+    } catch (err) {
+      if (thisRequestId === activeCandidateRequestIdRef.current) {
+        console.error("[Candidate Shortlist Lookup Error]", err);
+        setCandidateFeedback("Could not check related items right now.");
+      }
+    } finally {
+      if (thisRequestId === activeCandidateRequestIdRef.current) {
+        setIsShortlisting(false);
+      }
+    }
+  }
+
   // Helper to add a tag with trimming & case-insensitive deduplication
   function addTag(tagText: string) {
     const trimmed = tagText.trim();
@@ -77,6 +150,7 @@ export default function AddItemPage() {
     const exists = tags.some((t) => t.toLowerCase() === trimmed.toLowerCase());
     if (!exists) {
       setTags((prev) => [...prev, trimmed]);
+      invalidateCandidates();
     }
     setTagInput("");
   }
@@ -84,6 +158,7 @@ export default function AddItemPage() {
   // Remove a specific tag by index
   function removeTag(indexToRemove: number) {
     setTags((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    invalidateCandidates();
   }
 
   // Handle key events in the tag input (Enter / Comma / Backspace)
@@ -146,6 +221,7 @@ export default function AddItemPage() {
     }
 
     if (hasSourceChanged) {
+      invalidateCandidates();
       if (aiGeneratedData) {
         // Clear title ONLY if it currently matches the AI-generated title (user hasn't manually altered it)
         if (aiGeneratedData.generatedTitle && title.trim() === aiGeneratedData.generatedTitle.trim()) {
@@ -340,6 +416,19 @@ export default function AddItemPage() {
             text: `Preserved manual title and description. Applied ${newTagsCount} AI tags.`,
           });
         }
+
+        // Automatically trigger pre-save candidate shortlist lookup using fresh resolved metadata
+        const resolvedTitle = newGeneratedTitle !== undefined ? newGeneratedTitle : snapshotTitle;
+        const resolvedDesc = newGeneratedDesc !== undefined ? newGeneratedDesc : snapshotDesc;
+        const resolvedTags = [...manualTags, ...appliedAiTags];
+
+        if (resolvedTitle.trim() || resolvedDesc.trim()) {
+          runCandidateLookup({
+            title: resolvedTitle.trim(),
+            description: resolvedDesc.trim(),
+            tags: resolvedTags,
+          });
+        }
       } else {
         setAiFeedback({
           type: "info",
@@ -388,6 +477,7 @@ export default function AddItemPage() {
     setAiGeneratedData(null);
     setIsAiAssisted(false);
     setAiFeedback(null);
+    invalidateCandidates();
   }
 
   // Validate on the client before network request
@@ -466,6 +556,7 @@ export default function AddItemPage() {
     setSelectedImageFile(null);
     if (sourceFileInputRef.current) sourceFileInputRef.current.value = "";
     if (previewImageInputRef.current) previewImageInputRef.current.value = "";
+    invalidateCandidates();
   }
 
   // Prevent unexpected form submissions when pressing Enter in ordinary single-line inputs
@@ -1036,7 +1127,13 @@ export default function AddItemPage() {
                 id="title"
                 name="title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errors.title) {
+                    setErrors((prev) => ({ ...prev, title: undefined }));
+                  }
+                  invalidateCandidates();
+                }}
                 placeholder="Descriptive title for this saved item"
                 className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   errors.title
@@ -1067,7 +1164,13 @@ export default function AddItemPage() {
                 name="description"
                 rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (errors.description) {
+                    setErrors((prev) => ({ ...prev, description: undefined }));
+                  }
+                  invalidateCandidates();
+                }}
                 placeholder="Explain the key takeaways or context..."
                 className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   errors.description
@@ -1133,6 +1236,166 @@ export default function AddItemPage() {
                 />
               </div>
             </div>
+          </div>
+
+          <hr className="border-zinc-200 dark:border-zinc-800" />
+
+          {/* 4. Smart Connections: Pre-Save Potentially Related Candidates */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Potentially Related
+                  </h2>
+                  {connectionCandidates.length > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      {connectionCandidates.length} candidate{connectionCandidates.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Based on metadata similarity. Final connections are verified after saving.
+                </p>
+              </div>
+
+              {/* Find Related Items Button */}
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => runCandidateLookup()}
+                  disabled={(!title.trim() && !description.trim()) || isShortlisting || isAiGenerating}
+                  title={
+                    !title.trim() && !description.trim()
+                      ? "Enter a title or description first to find related items"
+                      : "Search existing library for related items"
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-zinc-400 whitespace-nowrap"
+                >
+                  {isShortlisting ? (
+                    <>
+                      <svg
+                        className="animate-spin h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span>Looking for related items...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                        />
+                      </svg>
+                      <span>{connectionCandidates.length > 0 ? "Refresh Related Items" : "Find Related Items"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback / Error message */}
+            {candidateFeedback && (
+              <div
+                role="status"
+                className="p-3 rounded-lg text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span>ℹ️</span>
+                  <p className="font-medium">{candidateFeedback}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCandidateFeedback(null)}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs px-1 font-semibold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Loading indicator (when candidates list is currently empty) */}
+            {isShortlisting && connectionCandidates.length === 0 && (
+              <div className="p-4 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/30 flex items-center justify-center gap-2.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <svg
+                  className="animate-spin h-4 w-4 text-zinc-600 dark:text-zinc-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Looking for related items...</span>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {hasSearchedCandidates && !isShortlisting && connectionCandidates.length === 0 && !candidateFeedback && (
+              <div className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/20 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                <span className="text-zinc-400">ℹ️</span>
+                <span>No closely related saved items found.</span>
+              </div>
+            )}
+
+            {/* Populated Candidate Cards */}
+            {connectionCandidates.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {connectionCandidates.map((cand) => (
+                  <div
+                    key={cand._id}
+                    className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1 leading-snug">
+                          {cand.title}
+                        </h3>
+                        {cand.contentType && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            {cand.contentType}
+                          </span>
+                        )}
+                      </div>
+                      {cand.description && (
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                          {cand.description}
+                        </p>
+                      )}
+                    </div>
+                    {cand.tags && cand.tags.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                        <span className="truncate">
+                          {cand.tags.slice(0, 3).join(" · ")}
+                          {cand.tags.length > 3 && ` · +${cand.tags.length - 3}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Form Actions */}

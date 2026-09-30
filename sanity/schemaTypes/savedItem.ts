@@ -112,6 +112,68 @@ export const savedItemType = defineType({
       ],
     }),
     defineField({
+      name: 'connections',
+      title: 'Connections',
+      type: 'array',
+      description: 'Smart Connections to other saved items with relationship details',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'connection',
+          title: 'Connection',
+          fields: [
+            defineField({
+              name: 'item',
+              title: 'Item',
+              type: 'reference',
+              to: [{type: 'savedItem'}],
+              validation: (rule) => rule.required().error('Referenced item is required'),
+            }),
+            defineField({
+              name: 'strength',
+              title: 'Strength',
+              type: 'string',
+              options: {
+                list: [
+                  {title: 'Strong', value: 'strong'},
+                  {title: 'Moderate', value: 'moderate'},
+                  {title: 'Weak', value: 'weak'},
+                ],
+                layout: 'dropdown',
+              },
+              validation: (rule) => rule.required().error('Connection strength is required'),
+            }),
+            defineField({
+              name: 'relationshipType',
+              title: 'Relationship Type',
+              type: 'string',
+              description: 'Short phrase describing relationship (e.g. prerequisite, complementary)',
+            }),
+            defineField({
+              name: 'explanation',
+              title: 'Explanation',
+              type: 'text',
+              description: 'Reason why these items are connected',
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'item.title',
+              strength: 'strength',
+              relationshipType: 'relationshipType',
+            },
+            prepare({title, strength, relationshipType}) {
+              const details = [strength, relationshipType].filter(Boolean).join(' • ')
+              return {
+                title: title || 'Untitled connection',
+                subtitle: details || 'Connection details',
+              }
+            },
+          },
+        }),
+      ],
+    }),
+    defineField({
       name: 'knowledgeCluster',
       title: 'Knowledge Cluster',
       type: 'string',

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:connections": "tsx scripts/seed-smart-connections.ts",
+    "test:connections": "tsx scripts/verify-smart-connections-shortlist.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

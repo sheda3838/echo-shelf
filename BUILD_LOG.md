@@ -1187,3 +1187,114 @@ Image
 → Groq Vision
 → Visual + textual understanding
 → AI-generated metadata
+
+## 2026-09-30 — Smart Connections Test Dataset
+
+Seeded 12 deterministic `savedItem` notes into Sanity across three themes:
+
+- Containers / DevOps
+- Web Development
+- Knowledge / AI
+
+The dataset intentionally contains strong, moderate, and unrelated relationships for testing Smart Connections.
+
+The seed script is idempotent and can be rerun with:
+
+`npm run seed:connections`
+
+## 2026-09-30 — Smart Connections Phase 1: Connection Schema & Metadata Candidate Shortlisting
+
+### Overview
+Implemented the foundation for Smart Connections:
+1. Extended Sanity's `savedItem` schema with a `connections` array of reference objects (`item`, `strength`, `relationshipType`, `explanation`), preserving backward compatibility with `relatedItems`.
+2. Created a lightweight, deterministic candidate shortlisting engine (`lib/connections/candidateShortlist.ts`) that extracts potential relationship candidates from Sanity without expensive LLM or embedding calls.
+
+### Schema Additions
+- Added `connections` array field to `savedItem` schema:
+  - `item`: Reference to `savedItem`
+  - `strength`: Dropdown with `"strong" | "moderate" | "weak"`
+  - `relationshipType`: Short string description
+  - `explanation`: Contextual text description
+  - Custom Sanity Studio preview displaying connected item title, strength, and relationship type.
+
+### Candidate Shortlisting Heuristics
+- **Signals & Weights**:
+  - Normalized Tag Overlap (60% weight, Jaccard similarity)
+  - Title Keyword Overlap (25% weight, root-aware Dice overlap + title-in-query cross-matching)
+  - Description Keyword Overlap (15% weight, root-aware Dice overlap)
+- **Token Normalization**:
+  - Lowercased, stripped punctuation, filtered generic stop words and short tokens (<=2 chars).
+  - Rule-based suffix normalization (handling plurals, `-ing`, `-es`, `-ies`, and root prefixes like `route`/`router`).
+- **Eligibility & Filtering**:
+  - Excludes current item (`excludeId`).
+  - Excludes Sanity drafts (`drafts.**`).
+  - Excludes documents missing title or meaningful content.
+  - Cross-content-type support (notes, articles, repos, videos, documents, images).
+  - Filters out weak candidates below heuristic threshold (`0.04`), capping shortlist at top 5 candidates and returning empty array `[]` when no meaningful candidates exist.
+- **Sanity Retrieval**:
+  - Lightweight GROQ query fetching only `_id`, `title`, `description`, `tags`, and `contentType` without pulling heavy file assets or source bodies.
+
+### Verification Results
+Tested against the 12-item controlled seed dataset:
+- **Test A (Docker Bridge Networks)**: Successfully ranked `Docker Networking Basics` (0.8402), `Container Port Mapping` (0.4612), `Kubernetes Service Discovery` (0.2261).
+- **Test B (Next.js Server Actions)**: Successfully ranked `Next.js Server Actions` (0.6020), `React Server Components` (0.2865), `GitHub Actions CI/CD` (0.1011), `REST API Route Design` (0.0515).
+- **Test C (Semantic Knowledge Management)**: Successfully ranked `Knowledge Graph Fundamentals` (0.4498), `Semantic Search Concepts` (0.1650), `Personal Knowledge Management` (0.1570).
+- **Test D (Home Gardening Checklist)**: Returned `[]` (0 candidates), verifying that no false relationships are forced.
+- All unit tests passed (tag normalization, keyword normalization, stop words, duplicate tags, case insensitivity, top-5 limit, self-exclusion, and no-match threshold).
+- TypeScript check (`npx tsc --noEmit`) and ESLint (`npm run lint`) passed with 0 errors and 0 warnings.
+
+## 2026-09-30 — Smart Connections Phase 2A: Pre-Save Candidate Suggestions UI
+
+### Overview
+Integrated candidate shortlisting into the `/add` pre-save workflow. Users can preview potentially related saved items in Sanity before saving without calling Groq or calculating embeddings:
+1. Created dedicated server action `lookupConnectionCandidatesAction` in `app/add/connection-actions.ts`.
+2. Built a responsive "Potentially Related" suggestions UI section below tags and before the save button.
+3. Automatically triggers candidate lookup once Smart Capture generates metadata (using fresh resolved values to prevent React state lag).
+4. Added manual "Find Related Items" trigger for manual-metadata users.
+5. Implemented immediate stale candidate invalidation on metadata (title, description, tags), content type, or source changes.
+
+### Server Action Details (`app/add/connection-actions.ts`)
+- Reuses the Phase 1 metadata shortlist engine (`lib/connections/candidateShortlist.ts`).
+- Enforces minimum metadata requirement: requires `title` or `description`.
+- Maps candidates to safe user-facing shape (`_id`, `title`, `description`, `tags`, `contentType`), stripping internal numeric scores.
+- Never exposes internal GROQ errors or sensitive tokens.
+
+### Frontend UI & State Architecture (`app/add/page.tsx`)
+- **State**:
+  - `connectionCandidates`: List of shortlisted candidate items kept for subsequent Phase 2B persistence.
+  - `isShortlisting`: Loading spinner with `"Looking for related items..."` text, preventing repeated clicks.
+  - `hasSearchedCandidates`: Tracks whether search ran to accurately display non-alarming empty state (`"No closely related saved items found."`).
+  - `candidateFeedback`: Displays non-blocking informative notifications if lookup fails.
+- **Card Design**:
+  - Displays title, content type badge, 2-line summary description, and up to 3-4 keyword tags formatted cleanly with `·`.
+  - Omits internal similarity scores, raw heuristic details, Groq strength, and relationship explanation (reserved for post-save AI verification in Phase 2B).
+- **Stale Invalidation**:
+  - Modifying title, description, tags, content type, or source immediately resets `connectionCandidates` and hides stale suggestions.
+- **Save Integrity**:
+  - Save button and form action behavior remain completely unaffected and unblocked.
+
+### Verification Results
+- **Test A (Docker)**: Successfully suggested `Docker Networking Basics`, `Container Port Mapping`, `Kubernetes Service Discovery`.
+- **Test B (Next.js)**: Successfully suggested `Next.js Server Actions`, `React Server Components`, `REST API Route Design`.
+- **Test C (Knowledge)**: Successfully suggested `Knowledge Graph Fundamentals`, `Semantic Search Concepts`, `Personal Knowledge Management`.
+- **Test D (Gardening)**: Correctly returned `[]` and displayed the clean empty state `"No closely related saved items found."`.
+- **Automated Regression & Suite Checks**:
+  - `npm run test:connections` passed (100% unit tests + seed dataset + server action assertions).
+  - TypeScript check (`npx tsc --noEmit`) passed with 0 errors.
+  - ESLint check (`npm run lint`) passed with 0 warnings/errors.
+
+
+  ## 2026-09-30 — Pre-Save Smart Connection Suggestions
+
+Connected the Smart Connections shortlist engine to the `/add` page.
+
+Echo Shelf now compares the current item's title, description, and tags against existing Sanity items before saving and displays likely related items under a "Potentially Related" section.
+
+The suggestions are heuristic only and do not use Groq yet.
+
+Verified manually with:
+- Docker/networking note
+- Next.js Server Actions note
+- Semantic knowledge-management note
+
+The expected related items appeared correctly, and unrelated items were not forced into the shortlist.
