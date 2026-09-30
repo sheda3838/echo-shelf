@@ -459,6 +459,7 @@ export default function AddItemPage() {
 
   const isUrlType = ["article", "video", "repo", "url"].includes(contentType);
   const isArticleOrUrl = contentType === "article" || contentType === "url";
+  const isRepo = contentType === "repo";
   const isImage = contentType === "image";
   const isDocument = contentType === "document";
   const isNote = contentType === "note";
@@ -480,7 +481,7 @@ export default function AddItemPage() {
   const isImageOrDoc = isImage || isDocument;
   const hasSourceContext =
     (isNote && sourceText.trim().length >= 5) ||
-    (isArticleOrUrl && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
+    ((isArticleOrUrl || isRepo) && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isUrlType && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isOther && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0));
 
@@ -822,10 +823,14 @@ export default function AddItemPage() {
                   title={
                     isImageOrDoc
                       ? "AI extraction for images and documents will be added later"
+                      : isRepo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
+                      ? "Enter a GitHub or GitLab repository URL for Smart Capture to analyze"
                       : isArticleOrUrl && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a valid webpage URL (http:// or https://) for Smart Capture to read"
                       : !hasSourceContext
                       ? "Provide source context (URL or notes) first"
+                      : isRepo && isValidSourceUrl
+                      ? "Read repository and generate metadata with Groq AI"
                       : isArticleOrUrl && isValidSourceUrl
                       ? "Read webpage and generate metadata with Groq AI"
                       : "Suggest title, description, and tags with Groq AI"
@@ -848,7 +853,9 @@ export default function AddItemPage() {
                         />
                       </svg>
                       <span>
-                        {isArticleOrUrl && isValidSourceUrl
+                        {isRepo && isValidSourceUrl
+                          ? "Reading repository and generating metadata..."
+                          : isArticleOrUrl && isValidSourceUrl
                           ? "Reading page and generating metadata..."
                           : "Generating..."}
                       </span>

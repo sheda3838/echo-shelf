@@ -450,3 +450,136 @@ Source
 
 This extraction pattern can now be reused for repositories, videos, documents, and images.
 
+
+## 2026-09-30 — Repository Source Extraction
+
+### What I Built
+
+Implemented a dedicated repository extraction layer for Echo Shelf Smart Capture.
+
+Repository content is no longer treated like a generic webpage.
+
+Echo Shelf now detects supported repository providers and uses their official APIs to retrieve structured repository information.
+
+Supported providers:
+
+- GitHub
+- GitLab
+
+### Repository Extraction Flow
+
+Repository URL
+→ Detect provider
+→ Parse repository/project path
+→ Fetch repository metadata
+→ Fetch README
+→ Normalize extracted context
+→ Send context to Groq
+→ Generate editable title, description, and tags
+
+### GitHub Integration
+
+For GitHub repositories, Echo Shelf retrieves:
+
+- Repository name
+- Full repository name
+- Description
+- Topics
+- Primary language
+- Default branch
+- Homepage
+- Star count
+- README content
+
+The GitHub REST API is used instead of scraping repository webpages.
+
+### GitLab Integration
+
+For GitLab repositories, Echo Shelf retrieves:
+
+- Project name
+- Namespace/project path
+- Description
+- Topics
+- Default branch
+- Star count
+- README content
+
+Nested GitLab namespaces and subgroup paths are supported.
+
+### README Handling
+
+README content is used as the main semantic context for Smart Capture.
+
+If no README exists, extraction continues using repository metadata instead of failing.
+
+README content is cleaned and capped at 15,000 characters before being sent to Groq.
+
+### Authentication
+
+Public repositories can be extracted without additional provider credentials.
+
+Optional server-side tokens are supported:
+
+- `GITHUB_TOKEN`
+- `GITLAB_TOKEN`
+
+These can later be added to increase provider API rate limits.
+
+### Smart Capture Integration
+
+For `repo` content:
+
+Repository URL
+→ Repository extractor
+→ Structured repository context
+→ Groq
+→ Suggested title, description, and tags
+
+Existing Smart Capture behavior remains unchanged:
+
+- Manual values are preserved
+- AI tags do not accumulate across regenerations
+- Clear AI Suggestions removes only AI-generated metadata
+- Changing repository URL invalidates stale AI suggestions
+- Out-of-order AI responses are discarded
+
+### Error Handling
+
+Handled:
+
+- Invalid repository URLs
+- Nonexistent repositories
+- Private/authentication-required repositories
+- Provider rate limits
+- Unsupported providers
+- Network/timeout failures
+- Missing README files
+
+### Verification
+
+Successfully tested:
+
+- Public GitHub repository
+- GitHub repository end-to-end Smart Capture
+- Invalid GitHub URL
+- Nonexistent GitHub repository
+- Public GitLab repository
+- GitLab nested namespace repository
+- GitLab repository end-to-end Smart Capture
+- Nonexistent GitLab repository
+- Unsupported provider
+
+TypeScript and ESLint checks completed successfully.
+
+### Learning
+
+Structured provider APIs are more reliable than webpage scraping for repository content.
+
+Echo Shelf now follows provider-specific extraction:
+
+GitHub / GitLab
+→ Official API
+→ Repository metadata + README
+→ Groq
+→ Structured metadata

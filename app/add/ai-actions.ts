@@ -2,6 +2,7 @@
 
 import { Groq } from "groq-sdk";
 import { extractWebArticle } from "@/lib/extractors/webArticle";
+import { extractRepository } from "@/lib/extractors/repository";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -107,7 +108,46 @@ export async function generateSmartCaptureAction(
       if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
       if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
     }
-  } else if (contentType === "video" || contentType === "repo") {
+  } else if (contentType === "repo") {
+    if (!cleanUrl && !cleanText && !cleanDesc) {
+      return {
+        success: false,
+        message: "Please enter a repository URL for Smart Capture to read.",
+      };
+    }
+
+    if (cleanUrl) {
+      const extraction = await extractRepository(cleanUrl);
+      if (!extraction.success) {
+        return {
+          success: false,
+          message: extraction.error,
+        };
+      }
+
+      const repo = extraction.data;
+      contextParts.push(`Source type: Repository`);
+      contextParts.push(`Provider: ${repo.provider === "github" ? "GitHub" : "GitLab"}`);
+      contextParts.push(`Repository: ${repo.fullName}`);
+      if (repo.description) contextParts.push(`Description: ${repo.description}`);
+      if (repo.primaryLanguage) contextParts.push(`Primary language: ${repo.primaryLanguage}`);
+      if (repo.topics && repo.topics.length > 0) contextParts.push(`Topics: ${repo.topics.join(", ")}`);
+      if (repo.stars !== undefined) contextParts.push(`Stars: ${repo.stars}`);
+      if (repo.defaultBranch) contextParts.push(`Default branch: ${repo.defaultBranch}`);
+      if (repo.homepage) contextParts.push(`Homepage: ${repo.homepage}`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
+      if (repo.readme) {
+        contextParts.push(`README:\n${repo.readme}`);
+      }
+    } else {
+      contextParts.push(`Content Type: Repository`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+    }
+  } else if (contentType === "video") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
         success: false,
@@ -120,11 +160,11 @@ export async function generateSmartCaptureAction(
       return {
         success: false,
         message:
-          `Dedicated AI extraction for ${contentType === "video" ? "videos" : "repositories"} will be added later. Please add some notes, key takeaways, or an excerpt so the AI has context.`,
+          "Dedicated AI extraction for videos will be added later. Please add some notes, key takeaways, or an excerpt so the AI has context.",
       };
     }
 
-    contextParts.push(`Content Type: ${contentType}`);
+    contextParts.push(`Content Type: Video`);
     if (cleanUrl) contextParts.push(`Source URL: ${cleanUrl}`);
     if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
     if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
