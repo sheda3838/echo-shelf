@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { extractImage, MAX_IMAGE_SIZE_BYTES } from "../lib/extractors/image";
+import { prepareImage, MAX_IMAGE_SIZE_BYTES } from "../lib/extractors/image";
 import { generateSmartCaptureAction } from "../app/add/ai-actions";
 
 // Load environment variables for Groq if available
@@ -24,47 +24,38 @@ function assert(condition: boolean, msg: string) {
   console.log(`  ✓ ${msg}`);
 }
 
-async function runTests() {
-  console.log("=== 1. Testing Image Extractor Unit Logic ===");
+function makeFile(buf: Buffer, name: string, type: string): File {
+  return new File([new Uint8Array(buf)], name, { type });
+}
 
-  // 1.1 Diagram screenshot (PNG)
-  console.log("\n[Test 1.1] Diagram screenshot PNG extraction:");
+async function runTests() {
+  console.log("=== 1. Testing Image Preparation Unit Logic ===");
+
+  // 1.1 Valid image preparation (PNG)
+  console.log("\n[Test 1.1] Image preparation (PNG):");
   const diagramBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/docker_networking.png"));
-  const resDiagram = await extractImage(diagramBuf, "docker_networking.png", "image/png");
-  assert(resDiagram.success, "Extraction succeeded for diagram PNG");
+  const resDiagram = prepareImage(diagramBuf, "docker_networking.png", "image/png");
+  assert(resDiagram.success, "Preparation succeeded for PNG");
   if (resDiagram.success) {
     assert(resDiagram.data.sourceType === "image", "Source type is 'image'");
-    assert(resDiagram.data.text.includes("Docker"), "Extracted text contains 'Docker'");
-    assert(typeof resDiagram.data.ocrConfidence === "number", "Confidence is a number");
-    console.log("    Extracted text sample:", JSON.stringify(resDiagram.data.text.slice(0, 80)));
-    console.log("    Confidence:", resDiagram.data.ocrConfidence);
+    assert(resDiagram.data.mimeType === "image/png", "MIME type is 'image/png'");
+    assert(resDiagram.data.base64DataUrl.startsWith("data:image/png;base64,"), "Data URL starts with correct prefix");
+    assert(resDiagram.data.size === diagramBuf.length, "Reported size matches buffer length");
   }
 
-  // 1.2 Infographic Card (JPG)
-  console.log("\n[Test 1.2] Infographic card JPG extraction:");
-  const jpgBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/infographic_card.jpg"));
-  const resJpg = await extractImage(jpgBuf, "infographic_card.jpg", "image/jpeg");
-  assert(resJpg.success, "Extraction succeeded for JPG");
-  if (resJpg.success) {
-    assert(resJpg.data.text.toLowerCase().includes("echo shelf"), "Extracted text contains 'Echo Shelf'");
-    console.log("    Extracted text sample:", JSON.stringify(resJpg.data.text.slice(0, 80)));
+  // 1.2 Valid image preparation (JPG)
+  console.log("\n[Test 1.2] Image preparation (JPG):");
+  const sunsetBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/sunset_beach.jpg"));
+  const resSunset = prepareImage(sunsetBuf, "sunset_beach.jpg", "image/jpeg");
+  assert(resSunset.success, "Preparation succeeded for JPG");
+  if (resSunset.success) {
+    assert(resSunset.data.mimeType === "image/jpeg", "MIME type is 'image/jpeg'");
+    assert(resSunset.data.base64DataUrl.startsWith("data:image/jpeg;base64,"), "Data URL starts with correct prefix");
   }
 
-  // 1.3 Photo / Blank image (Insufficient text)
-  console.log("\n[Test 1.3] Blank / low-text image threshold:");
-  const blankBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/blank.png"));
-  const resBlank = await extractImage(blankBuf, "blank.png", "image/png");
-  assert(!resBlank.success, "Blank image should fail extraction");
-  if (!resBlank.success) {
-    assert(
-      resBlank.error === "Not enough readable text was found in this image. Add a description manually.",
-      `Correct error message on blank image: '${resBlank.error}'`
-    );
-  }
-
-  // 1.4 Unsupported format (GIF)
-  console.log("\n[Test 1.4] Unsupported format rejection (GIF):");
-  const resGif = await extractImage(diagramBuf, "animation.gif", "image/gif");
+  // 1.3 Unsupported format rejection (GIF)
+  console.log("\n[Test 1.3] Unsupported format rejection (GIF):");
+  const resGif = prepareImage(diagramBuf, "animation.gif", "image/gif");
   assert(!resGif.success, "GIF should be rejected");
   if (!resGif.success) {
     assert(
@@ -73,10 +64,10 @@ async function runTests() {
     );
   }
 
-  // 1.5 Oversized file rejection
-  console.log("\n[Test 1.5] Oversized image rejection (>10 MB):");
+  // 1.4 Oversized file rejection (>10 MB)
+  console.log("\n[Test 1.4] Oversized image rejection (>10 MB):");
   const oversizedBuf = Buffer.alloc(MAX_IMAGE_SIZE_BYTES + 1024);
-  const resOversized = await extractImage(oversizedBuf, "huge.png", "image/png");
+  const resOversized = prepareImage(oversizedBuf, "huge.png", "image/png");
   assert(!resOversized.success, "Oversized file should be rejected");
   if (!resOversized.success) {
     assert(
@@ -85,10 +76,10 @@ async function runTests() {
     );
   }
 
-  // 1.6 Invalid / Empty file rejection
-  console.log("\n[Test 1.6] Empty / invalid file rejection:");
+  // 1.5 Empty / invalid file rejection
+  console.log("\n[Test 1.5] Empty / invalid file rejection:");
   const emptyBuf = Buffer.alloc(0);
-  const resEmpty = await extractImage(emptyBuf, "empty.png", "image/png");
+  const resEmpty = prepareImage(emptyBuf, "empty.png", "image/png");
   assert(!resEmpty.success, "Empty file should be rejected");
   if (!resEmpty.success) {
     assert(
@@ -97,44 +88,77 @@ async function runTests() {
     );
   }
 
-  console.log("\n=== 2. Testing End-to-End Server Action with Groq ===");
+  console.log("\n=== 2. Testing Direct Multimodal Understanding (Groq Vision) ===");
 
-  // Helper to create a File object
-  function makeFile(buf: Buffer, name: string, type: string): File {
-    return new File([new Uint8Array(buf)], name, { type });
+  // 2.1 Test A: Text-heavy diagram
+  console.log("\n[Test 2.1] Test A — Text-heavy image (docker_networking.png):");
+  const fdDiagram = new FormData();
+  fdDiagram.append("contentType", "image");
+  fdDiagram.append("sourceFile", makeFile(diagramBuf, "docker_networking.png", "image/png"));
+
+  const actionDiagramRes = await generateSmartCaptureAction(fdDiagram);
+  assert(actionDiagramRes.success, "Server Action succeeded for text-heavy image");
+  if (actionDiagramRes.success && actionDiagramRes.data) {
+    console.log("    Title:", actionDiagramRes.data.title);
+    console.log("    Description:", actionDiagramRes.data.description);
+    console.log("    Tags:", actionDiagramRes.data.tags);
+    assert(Boolean(actionDiagramRes.data.title), "Title is present");
+    assert(Boolean(actionDiagramRes.data.description), "Description is present");
+    assert(actionDiagramRes.data.tags.length >= 3, "At least 3 tags generated");
   }
 
-  // 2.1 Full Image Smart Capture via FormData
-  console.log("\n[Test 2.1] Server Action call with docker_networking.png:");
-  const imageFile = makeFile(diagramBuf, "docker_networking.png", "image/png");
-  const fdImage = new FormData();
-  fdImage.append("contentType", "image");
-  fdImage.append("sourceFile", imageFile);
+  // 2.2 Test B: Visual photo with no text
+  console.log("\n[Test 2.2] Test B — Visual photo (sunset_beach.jpg):");
+  const fdSunset = new FormData();
+  fdSunset.append("contentType", "image");
+  fdSunset.append("sourceFile", makeFile(sunsetBuf, "sunset_beach.jpg", "image/jpeg"));
 
-  const actionRes = await generateSmartCaptureAction(fdImage);
-  assert(actionRes.success, "Server Action succeeded for image");
-  if (actionRes.success && actionRes.data) {
-    console.log("    Generated Title:", actionRes.data.title);
-    console.log("    Generated Description:", actionRes.data.description);
-    console.log("    Generated Tags:", actionRes.data.tags);
-    assert(Boolean(actionRes.data.title), "Title is present");
-    assert(Boolean(actionRes.data.description), "Description is present");
-    assert(actionRes.data.tags.length >= 3, "At least 3 tags generated");
+  const actionSunsetRes = await generateSmartCaptureAction(fdSunset);
+  assert(actionSunsetRes.success, "Server Action succeeded for visual photo");
+  if (actionSunsetRes.success && actionSunsetRes.data) {
+    console.log("    Title:", actionSunsetRes.data.title);
+    console.log("    Description:", actionSunsetRes.data.description);
+    console.log("    Tags:", actionSunsetRes.data.tags);
+    assert(Boolean(actionSunsetRes.data.title), "Title is present");
+    assert(Boolean(actionSunsetRes.data.description), "Description is present");
+    assert(actionSunsetRes.data.tags.length >= 3, "At least 3 tags generated");
+    // Verify it understands the visual scene
+    const textLower = (actionSunsetRes.data.title + " " + actionSunsetRes.data.description).toLowerCase();
+    const hasVisualTerm = ["sunset", "sun", "ocean", "beach", "sky", "horizon"].some((t) => textLower.includes(t));
+    assert(hasVisualTerm, "Visual content recognized (sunset/ocean/beach/sky)");
   }
 
-  // 2.2 Server Action with Blank Image (Safe error propagation)
-  console.log("\n[Test 2.2] Server Action call with blank image:");
-  const blankFile = makeFile(blankBuf, "blank.png", "image/png");
+  // 2.3 Test C: UI screenshot
+  console.log("\n[Test 2.3] Test C — UI Screenshot (ui_screenshot.png):");
+  const uiBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/ui_screenshot.png"));
+  const fdUi = new FormData();
+  fdUi.append("contentType", "image");
+  fdUi.append("sourceFile", makeFile(uiBuf, "ui_screenshot.png", "image/png"));
+
+  const actionUiRes = await generateSmartCaptureAction(fdUi);
+  assert(actionUiRes.success, "Server Action succeeded for UI screenshot");
+  if (actionUiRes.success && actionUiRes.data) {
+    console.log("    Title:", actionUiRes.data.title);
+    console.log("    Description:", actionUiRes.data.description);
+    console.log("    Tags:", actionUiRes.data.tags);
+    assert(Boolean(actionUiRes.data.title), "Title is present");
+  }
+
+  // 2.4 Test D: Image with very little/no text (blank.png)
+  console.log("\n[Test 2.4] Test D — Image with no text (blank.png):");
+  const blankBuf = fs.readFileSync(path.join(__dirname, "../test_fixtures/blank.png"));
   const fdBlank = new FormData();
   fdBlank.append("contentType", "image");
-  fdBlank.append("sourceFile", blankFile);
+  fdBlank.append("sourceFile", makeFile(blankBuf, "blank.png", "image/png"));
 
   const actionBlankRes = await generateSmartCaptureAction(fdBlank);
-  assert(!actionBlankRes.success, "Blank image Server Action should fail safely");
-  assert(
-    actionBlankRes.message === "Not enough readable text was found in this image. Add a description manually.",
-    `Server Action preserved safe message: '${actionBlankRes.message}'`
-  );
+  // Unlike OCR which failed with "Not enough readable text", Groq Vision succeeds on blank/simple images
+  assert(actionBlankRes.success, "Groq Vision handles blank/minimal images without OCR minimum-text error");
+  if (actionBlankRes.success && actionBlankRes.data) {
+    console.log("    Title:", actionBlankRes.data.title);
+    console.log("    Description:", actionBlankRes.data.description);
+    console.log("    Tags:", actionBlankRes.data.tags);
+  }
 
   console.log("\n=== 3. Regression Checks ===");
 
@@ -147,18 +171,16 @@ async function runTests() {
   assert(noteRes.success, "Note Smart Capture still works");
   if (noteRes.success && noteRes.data) {
     console.log("    Note Title:", noteRes.data.title);
-    console.log("    Note Tags:", noteRes.data.tags);
   }
 
-  // 3.2 Document Smart Capture regression (DOCX)
+  // 3.2 Document Smart Capture (DOCX)
   console.log("\n[Test 3.2] Document Smart Capture regression (sample.docx):");
   const docxPath = path.join(__dirname, "../test_fixtures/sample.docx");
   if (fs.existsSync(docxPath)) {
     const docxBuf = fs.readFileSync(docxPath);
-    const docxFile = makeFile(docxBuf, "sample.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     const fdDocx = new FormData();
     fdDocx.append("contentType", "document");
-    fdDocx.append("sourceFile", docxFile);
+    fdDocx.append("sourceFile", makeFile(docxBuf, "sample.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
     const docxRes = await generateSmartCaptureAction(fdDocx);
     assert(docxRes.success, "Document Smart Capture still works");
     if (docxRes.success && docxRes.data) {
@@ -166,7 +188,7 @@ async function runTests() {
     }
   }
 
-  // 3.3 Article / URL Smart Capture regression
+  // 3.3 Article / URL Smart Capture
   console.log("\n[Test 3.3] Article Smart Capture regression:");
   const articleRes = await generateSmartCaptureAction({
     contentType: "article",
@@ -174,7 +196,7 @@ async function runTests() {
   });
   assert(articleRes.success, "Article Smart Capture still works");
 
-  // 3.4 Repo Smart Capture regression
+  // 3.4 Repo Smart Capture
   console.log("\n[Test 3.4] Repository Smart Capture regression:");
   const repoRes = await generateSmartCaptureAction({
     contentType: "repo",
@@ -185,7 +207,7 @@ async function runTests() {
     console.log("    Repo Title:", repoRes.data.title);
   }
 
-  // 3.5 YouTube Smart Capture regression
+  // 3.5 YouTube Smart Capture
   console.log("\n[Test 3.5] YouTube Smart Capture regression:");
   const ytRes = await generateSmartCaptureAction({
     contentType: "video",

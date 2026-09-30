@@ -1,71 +1,26 @@
 import path from "path";
-import { createWorker } from "tesseract.js";
 
 /**
- * Maximum image file size allowed for Smart Capture OCR: 10 MB.
+ * Maximum image file size allowed for Groq Vision Smart Capture: 10 MB.
  */
 export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
-/**
- * Maximum character limit for normalized OCR text sent to Groq.
- */
-export const MAX_IMAGE_TEXT_CHARS = 12000;
-
-/**
- * Minimum meaningful characters required to avoid sending pure OCR noise to Groq.
- */
-export const MIN_MEANINGFUL_TEXT_CHARS = 20;
-
-export interface ExtractedImage {
+export interface PreparedImage {
   sourceType: "image";
   fileName: string;
   mimeType: string;
-  text: string;
-  ocrConfidence?: number;
-  width?: number;
-  height?: number;
+  size: number;
+  base64DataUrl: string;
 }
 
-export type ImageExtractionResult =
-  | { success: true; data: ExtractedImage }
+export type ImagePreparationResult =
+  | { success: true; data: PreparedImage }
   | { success: false; error: string };
 
 /**
- * Normalizes extracted OCR text:
- * - normalizes line endings
- * - collapses repeated whitespace on each line while trimming trailing spaces
- * - collapses excessive blank lines (>2 empty lines)
- * - preserves meaningful paragraph and line separation
- * - truncates to MAX_IMAGE_TEXT_CHARS if needed
- */
-export function normalizeOcrText(text: string): string {
-  const normalized = text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+/g, " ").trim())
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  if (normalized.length > MAX_IMAGE_TEXT_CHARS) {
-    return normalized.slice(0, MAX_IMAGE_TEXT_CHARS).trim() + "\n\n[Content truncated]";
-  }
-  return normalized;
-}
-
-/**
- * Count meaningful alphanumeric characters to detect noise or empty OCR results.
- */
-function countMeaningfulCharacters(text: string): number {
-  const matches = text.match(/[a-zA-Z0-9]/g);
-  return matches ? matches.length : 0;
-}
-
-/**
  * Validates image extension and MIME type.
- * Supports: .png, .jpg, .jpeg, .webp
- * MIME types: image/png, image/jpeg, image/webp
+ * Supported extensions: .png, .jpg, .jpeg, .webp
+ * Supported MIME types: image/png, image/jpeg, image/webp
  */
 function validateImageFormat(
   fileName: string,
@@ -80,7 +35,7 @@ function validateImageFormat(
   const hasSupportedExt = supportedExtensions.includes(ext);
   const hasSupportedMime = supportedMimes.includes(cleanMime);
 
-  // If both are provided and strongly conflict (e.g. extension is .png but MIME is application/pdf)
+  // If provided MIME strongly conflicts with an image (e.g. application/pdf, text/plain)
   if (
     cleanMime &&
     !cleanMime.startsWith("image/") &&
@@ -102,7 +57,7 @@ function validateImageFormat(
     };
   }
 
-  // If MIME type is a known unsupported image type (e.g. image/gif, image/svg+xml, image/bmp)
+  // Known unsupported image types (e.g., gif, svg, bmp, tiff)
   const unsupportedImageMimes = [
     "image/gif",
     "image/svg+xml",
@@ -130,14 +85,14 @@ function validateImageFormat(
 }
 
 /**
- * Server-side extractor for images using Tesseract.js OCR.
- * Extracts visible text, validates file bounds and format, and normalizes output.
+ * Validates and prepares an uploaded image buffer for Groq Vision input.
+ * Converts to a base64 Data URL without exposing raw data in logs.
  */
-export async function extractImage(
+export function prepareImage(
   buffer: Buffer,
   fileName: string,
   mimeType?: string
-): Promise<ImageExtractionResult> {
+): ImagePreparationResult {
   const formatCheck = validateImageFormat(fileName, mimeType);
   if (!formatCheck.valid) {
     return {
@@ -160,64 +115,17 @@ export async function extractImage(
     };
   }
 
-  let worker;
-  try {
-    worker = await createWorker("eng");
-    const result = await worker.recognize(buffer);
+  const base64 = buffer.toString("base64");
+  const base64DataUrl = `data:${formatCheck.normalizedMime};base64,${base64}`;
 
-    const rawText = result.data.text || "";
-    const confidence =
-      typeof result.data.confidence === "number" ? Math.round(result.data.confidence) : undefined;
-    const normalized = normalizeOcrText(rawText);
-
-    const meaningfulChars = countMeaningfulCharacters(normalized);
-
-    console.log("[Image Smart Capture]", {
-      stage: "ocr-extracted",
+  return {
+    success: true,
+    data: {
+      sourceType: "image",
       fileName,
       mimeType: formatCheck.normalizedMime,
       size: buffer.length,
-      ocrConfidence: confidence,
-      characterCount: normalized.length,
-      meaningfulCharCount: meaningfulChars,
-    });
-
-    if (meaningfulChars < MIN_MEANINGFUL_TEXT_CHARS) {
-      return {
-        success: false,
-        error: "Not enough readable text was found in this image. Add a description manually.",
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        sourceType: "image",
-        fileName,
-        mimeType: formatCheck.normalizedMime,
-        text: normalized,
-        ocrConfidence: confidence,
-      },
-    };
-  } catch (err: unknown) {
-    console.error("[Image Smart Capture]", {
-      stage: "ocr-error",
-      fileName,
-      mimeType: formatCheck.normalizedMime,
-      size: buffer.length,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return {
-      success: false,
-      error: "Could not read text from this image. Please try another image.",
-    };
-  } finally {
-    if (worker) {
-      try {
-        await worker.terminate();
-      } catch (termErr) {
-        console.error("[Image Smart Capture] Failed to terminate worker cleanly:", termErr);
-      }
-    }
-  }
+      base64DataUrl,
+    },
+  };
 }

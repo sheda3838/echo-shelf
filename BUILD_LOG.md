@@ -1005,3 +1005,185 @@ Images
 → Tesseract.js OCR
 
 All extracted content is normalized before being sent to Groq.
+
+## 2026-09-30 — Replaced OCR-Only Image Capture with Groq Vision
+
+### Why This Changed
+
+The first Image Smart Capture implementation used `tesseract.js` OCR.
+
+It worked well for text-heavy screenshots and infographics, but manual testing with normal visual images exposed a major limitation.
+
+For images with little or no readable text, OCR produced meaningless text fragments and Smart Capture generated poor metadata from that incorrect context.
+
+Example failure:
+- Visual beach/sunset image
+- OCR extracted low-confidence noise
+- Groq generated metadata about OCR quality instead of the actual scene
+
+This showed that OCR alone was not suitable for Echo Shelf's broader Image category, which includes:
+
+- Photos
+- Screenshots
+- Diagrams
+- Illustrations
+
+### Architecture Revision
+
+The image pipeline was redesigned from:
+
+Image
+→ Tesseract OCR
+→ Extracted text
+→ Text-only Groq model
+
+to:
+
+Image
+→ Groq Vision
+→ Direct visual + text understanding
+→ Structured metadata
+
+### Multimodal Model
+
+Echo Shelf now uses:
+
+`qwen/qwen3.8-27b`
+
+through the existing Groq API.
+
+The uploaded image is converted server-side into a Base64 Data URL and sent directly as multimodal input.
+
+### Image Smart Capture Flow
+
+Image upload
+→ Validate format and file size
+→ Convert image buffer to Base64 Data URL
+→ Send image directly to Groq Vision
+→ Analyze visual scene + visible text
+→ Generate title, description, and tags
+→ User reviews/edits before saving
+
+### Supported Formats
+
+- PNG
+- JPG
+- JPEG
+- WEBP
+
+Maximum image size:
+
+`10 MB`
+
+### Tesseract Removal
+
+`tesseract.js` was removed completely because Groq Vision now handles both:
+
+- visible text
+- visual content
+
+Removed:
+
+- Tesseract dependency
+- OCR worker lifecycle
+- OCR confidence tracking
+- minimum readable-text threshold
+- OCR-specific error handling
+- Tesseract server external configuration
+
+### Vision Capabilities
+
+Image Smart Capture can now understand:
+
+- Photos
+- Landscapes
+- Screenshots
+- Posters
+- Infographics
+- UI screenshots
+- Diagrams
+- Illustrations
+- Images containing visible text
+- Images containing little or no text
+
+The model is instructed to avoid inventing details that cannot reasonably be seen in the supplied image.
+
+### UI Updates
+
+Updated loading state to:
+
+`Analyzing image and generating suggestions...`
+
+Removed outdated OCR/future-image-extraction messaging.
+
+Existing Smart Capture behavior remains intact:
+
+- Manual values are preserved
+- AI-generated values are tracked separately
+- Changing image invalidates stale suggestions
+- Clear AI Suggestions removes only AI-generated metadata
+- Out-of-order responses cannot overwrite a newly selected image
+
+### Manual Verification
+
+#### Text-Heavy Image
+
+A Docker networking diagram was analyzed successfully.
+
+Generated metadata correctly identified:
+
+- Docker networking
+- Host/container port mapping
+- Bridge networking
+- Virtual subnet information
+
+#### Visual Photo
+
+A beach/sunset image containing no useful text was analyzed successfully.
+
+The model recognized the actual visual scene and generated relevant metadata instead of OCR noise.
+
+#### UI Screenshot
+
+A settings-dashboard screenshot was successfully understood using both visible text and visual context.
+
+#### Blank Image
+
+A blank white image was still handled safely and described accurately rather than causing an extraction failure.
+
+### Real-World Manual Test
+
+A bank-account information image was manually tested through `/add`.
+
+Groq Vision correctly generated:
+
+- A meaningful bank-account title
+- A description based on the visible information
+- Relevant banking/account tags
+
+The result confirmed that both visual content and visible text can now be understood directly.
+
+### Regression Verification
+
+Existing Smart Capture flows continued working:
+
+- Notes
+- Articles / generic URLs
+- GitHub / GitLab repositories
+- YouTube videos
+- Documents
+
+TypeScript and ESLint checks completed successfully.
+
+### Learning
+
+OCR is useful for reading text but is not sufficient for general image understanding.
+
+Manual testing revealed that Echo Shelf's Image category required multimodal visual understanding rather than text extraction alone.
+
+The final Image Smart Capture architecture is:
+
+Image
+→ Groq Vision
+→ Visual + textual understanding
+→ AI-generated metadata

@@ -26,7 +26,6 @@
     "react-dom": "19.2.8",
     "sanity": "^5.31.2",
     "styled-components": "^6.5.3",
-    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

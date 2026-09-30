@@ -5,7 +5,7 @@ import { extractWebArticle } from "@/lib/extractors/webArticle";
 import { extractRepository } from "@/lib/extractors/repository";
 import { extractYouTubeVideo } from "@/lib/extractors/youtube";
 import { extractDocument } from "@/lib/extractors/document";
-import { extractImage } from "@/lib/extractors/image";
+import { prepareImage } from "@/lib/extractors/image";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -28,6 +28,68 @@ export interface SmartCaptureResult {
 
 // Allowed Groq model with JSON mode support
 const GROQ_MODEL = "openai/gpt-oss-120b";
+const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
+
+/**
+ * Parses and validates JSON responses from Groq completions.
+ */
+function parseGroqJsonResponse(rawResponse: string | null | undefined): SmartCaptureResult {
+  if (!rawResponse) {
+    return {
+      success: false,
+      message: "AI did not return any suggestions. Please try again with more details.",
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawResponse);
+  } catch {
+    return {
+      success: false,
+      message: "Failed to parse AI response. Please try again.",
+    };
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return {
+      success: false,
+      message: "Received invalid data structure from AI. Please try again.",
+    };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const description = typeof record.description === "string" ? record.description.trim() : "";
+
+  const rawTags = Array.isArray(record.tags) ? record.tags : [];
+  const tagsSet = new Set<string>();
+  for (const tag of rawTags) {
+    if (typeof tag === "string") {
+      const cleaned = tag.replace(/^#/, "").trim().toLowerCase();
+      if (cleaned.length > 0 && cleaned.length < 30) {
+        tagsSet.add(cleaned);
+      }
+    }
+  }
+  const tags = Array.from(tagsSet).slice(0, 6);
+
+  if (!title || !description) {
+    return {
+      success: false,
+      message: "AI could not generate complete metadata from the provided context. Please add more details.",
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      title,
+      description,
+      tags,
+    },
+  };
+}
 
 /**
  * Server Action for Smart Capture.
@@ -307,7 +369,7 @@ export async function generateSmartCaptureAction(
       if (!cleanText && !cleanDesc) {
         return {
           success: false,
-          message: "Please select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to read.",
+          message: "Please select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to analyze.",
         };
       }
       contextParts.push(`Content Type: Image`);
@@ -345,41 +407,112 @@ export async function generateSmartCaptureAction(
         };
       }
 
-      const extraction = await extractImage(fileBuffer, sourceFile.name, sourceFile.type);
+      const prepResult = prepareImage(fileBuffer, sourceFile.name, sourceFile.type);
 
-      if (!extraction.success) {
+      if (!prepResult.success) {
         console.error("[Image Smart Capture]", {
-          stage: "extraction-failed",
+          stage: "validation-failed",
           fileName: sourceFile.name,
           mimeType: sourceFile.type,
           size: sourceFile.size,
-          error: extraction.error,
+          error: prepResult.error,
         });
         return {
           success: false,
-          message: extraction.error,
+          message: prepResult.error,
         };
       }
 
-      const img = extraction.data;
+      const prepared = prepResult.data;
       console.log("[Image Smart Capture]", {
-        stage: "extraction-success",
-        fileName: img.fileName,
-        mimeType: img.mimeType,
-        extractedCharacters: img.text.length,
-        ocrConfidence: img.ocrConfidence,
+        stage: "image-prepared",
+        fileName: prepared.fileName,
+        mimeType: prepared.mimeType,
+        size: prepared.size,
       });
 
-      contextParts.push(`Source type: Image`);
-      contextParts.push(`Extraction method: OCR`);
-      contextParts.push(`File name: ${img.fileName}`);
-      if (img.ocrConfidence !== undefined && !isNaN(img.ocrConfidence)) {
-        contextParts.push(`OCR confidence: ${img.ocrConfidence}%`);
+      const userInstructions: string[] = [
+        "Analyze the supplied image directly.",
+        "Understand:",
+        "- the main visual subject",
+        "- scene/context",
+        "- important visible objects",
+        "- visible text",
+        "- diagrams/labels where understandable",
+        "",
+        "Return metadata suitable for a personal knowledge-saving app.",
+        "Do not invent details that cannot reasonably be seen in the image.",
+        "Do not mention that an AI analyzed the image.",
+        "Do not mention OCR.",
+        "Do not describe uncertainty unless the image is genuinely unclear.",
+        "",
+        `File name: ${prepared.fileName}`,
+      ];
+
+      if (cleanTitle) userInstructions.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) userInstructions.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) userInstructions.push(`User Additional Notes: ${cleanText}`);
+
+      userInstructions.push(
+        "",
+        "You must reply with valid JSON matching exactly this schema:",
+        "{",
+        '  "title": "string",',
+        '  "description": "string",',
+        '  "tags": ["string"]',
+        "}",
+        "",
+        "Requirements:",
+        "- 'title': A concise, descriptive title representing the image content (max 80 characters).",
+        "- 'description': An accurate, informative summary of the content and key details (1 to 3 sentences).",
+        "- 'tags': An array of 3 to 6 short, lowercase, relevant keyword tags (hyphenated if multi-word, no spaces, no '#', no duplicates)."
+      );
+
+      console.log("[Image Smart Capture]", {
+        stage: "groq-vision-request",
+        fileName: prepared.fileName,
+        mimeType: prepared.mimeType,
+        size: prepared.size,
+      });
+
+      try {
+        const groq = new Groq({ apiKey });
+        const completion = await groq.chat.completions.create({
+          model: GROQ_VISION_MODEL,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: userInstructions.join("\n"),
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: prepared.base64DataUrl,
+                  },
+                },
+              ],
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+        });
+
+        const rawVisionResponse = completion.choices[0]?.message?.content;
+        return parseGroqJsonResponse(rawVisionResponse);
+      } catch (visionError: unknown) {
+        console.error("[Image Smart Capture]", {
+          stage: "groq-vision-completion",
+          fileName: prepared.fileName,
+          error: visionError instanceof Error ? visionError.message : "Unknown error",
+        });
+        return {
+          success: false,
+          message: "Unable to analyze this image right now. Please try again or enter metadata manually.",
+        };
       }
-      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
-      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
-      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
-      contextParts.push(`Extracted visible text:\n${img.text}`);
     }
   } else if (contentType === "other") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
@@ -412,7 +545,7 @@ Requirements:
 - "title": A concise, descriptive title representing the content (max 80 characters).
 - "description": A clear, informative summary of the content's purpose and key takeaways (2 to 3 sentences).
 - "tags": An array of 3 to 6 short, lowercase, relevant keyword tags (hyphenated if multi-word, no spaces, no '#', no duplicates).
-- Do NOT hallucinate or invent facts that are not supported by the provided context. If the source is an image, use only the visible text extracted via OCR and do not invent visual elements.
+- Do NOT hallucinate or invent facts that are not supported by the provided context.
 
 You must reply with valid JSON matching exactly this schema:
 {
@@ -431,62 +564,7 @@ You must reply with valid JSON matching exactly this schema:
     });
 
     const rawResponse = completion.choices[0]?.message?.content;
-    if (!rawResponse) {
-      return {
-        success: false,
-        message: "AI did not return any suggestions. Please try again with more details.",
-      };
-    }
-
-    // 5. Parse and validate JSON structure safely
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawResponse);
-    } catch {
-      return {
-        success: false,
-        message: "Failed to parse AI response. Please try again.",
-      };
-    }
-
-    if (typeof parsed !== "object" || parsed === null) {
-      return {
-        success: false,
-        message: "Received invalid data structure from AI. Please try again.",
-      };
-    }
-
-    const record = parsed as Record<string, unknown>;
-    const title = typeof record.title === "string" ? record.title.trim() : "";
-    const description = typeof record.description === "string" ? record.description.trim() : "";
-    
-    const rawTags = Array.isArray(record.tags) ? record.tags : [];
-    const tagsSet = new Set<string>();
-    for (const tag of rawTags) {
-      if (typeof tag === "string") {
-        const cleaned = tag.replace(/^#/, "").trim().toLowerCase();
-        if (cleaned.length > 0 && cleaned.length < 30) {
-          tagsSet.add(cleaned);
-        }
-      }
-    }
-    const tags = Array.from(tagsSet).slice(0, 6);
-
-    if (!title || !description) {
-      return {
-        success: false,
-        message: "AI could not generate complete metadata from the provided context. Please add more details.",
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        title,
-        description,
-        tags,
-      },
-    };
+    return parseGroqJsonResponse(rawResponse);
   } catch (groqError: unknown) {
     console.error("[Smart Capture]", {
       stage: "groq-completion",

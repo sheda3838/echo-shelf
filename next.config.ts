@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
     "mammoth",
     "xlsx",
     "pptx-text-parser",
-    "tesseract.js",
   ],
 };
 

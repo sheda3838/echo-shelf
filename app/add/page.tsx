@@ -921,7 +921,7 @@ export default function AddItemPage() {
                   disabled={!isAiAvailable || isAiGenerating}
                   title={
                     isImage && !hasImageFile
-                      ? "Select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to read"
+                      ? "Select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to analyze"
                       : isDocument && !hasDocumentFile
                       ? "Select a document file (.pdf, .docx, .pptx, or .xlsx) for Smart Capture to read"
                       : isVideo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
@@ -933,7 +933,7 @@ export default function AddItemPage() {
                       : !hasSourceContext
                       ? "Provide source context (image, document file, URL, or notes) first"
                       : isImage && hasImageFile
-                      ? "Read image text and generate metadata with Groq AI"
+                      ? "Analyze image directly with Groq Vision"
                       : isDocument && hasDocumentFile
                       ? "Read document and generate metadata with Groq AI"
                       : isVideo && isValidSourceUrl
@@ -963,7 +963,7 @@ export default function AddItemPage() {
                       </svg>
                       <span>
                         {isImage && hasImageFile
-                          ? "Reading image text and generating suggestions..."
+                          ? "Analyzing image and generating suggestions..."
                           : isDocument && hasDocumentFile
                           ? "Reading document and generating suggestions..."
                           : isVideo && isValidSourceUrl
@@ -1021,13 +1021,6 @@ export default function AddItemPage() {
                   ✕
                 </button>
               </div>
-            )}
-
-            {/* Image notice */}
-            {isImage && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 italic">
-                AI extraction for images will be added in a future update.
-              </p>
             )}
 
             {/* Title */}
