@@ -32,7 +32,13 @@ interface AiGeneratedTracking {
   generatedTags: string[];
   sourceUrl: string;
   sourceText?: string;
+  sourceFileId?: string;
   contentType: ContentType;
+}
+
+function getFileId(file: File | null | undefined): string {
+  if (!file) return "";
+  return `${file.name}-${file.size}-${file.type}-${file.lastModified}`;
 }
 
 export default function AddItemPage() {
@@ -41,6 +47,7 @@ export default function AddItemPage() {
   const [description, setDescription] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceText, setSourceText] = useState("");
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
   
   // Interactive tags state
   const [tags, setTags] = useState<string[]>([]);
@@ -99,7 +106,8 @@ export default function AddItemPage() {
   function invalidateAiSuggestions(
     nextSourceUrl?: string,
     nextContentType?: ContentType,
-    nextSourceText?: string
+    nextSourceText?: string,
+    nextDocumentFile?: File | null
   ) {
     // Invalidate any in-flight AI requests immediately (prevents out-of-order race conditions)
     activeAiRequestIdRef.current++;
@@ -115,12 +123,22 @@ export default function AddItemPage() {
     const targetUrl = nextSourceUrl !== undefined ? nextSourceUrl.trim() : sourceUrl.trim();
     const targetContentType = nextContentType !== undefined ? nextContentType : contentType;
     const targetText = nextSourceText !== undefined ? nextSourceText.trim() : sourceText.trim();
+    const targetFile = nextDocumentFile !== undefined ? nextDocumentFile : selectedDocumentFile;
+    const targetFileId = getFileId(targetFile);
+    const currentAiFileId = aiGeneratedData?.sourceFileId ?? "";
 
     const isUrlBased = ["article", "url", "video", "repo"].includes(targetContentType);
-    const hasSourceChanged = isUrlBased
-      ? targetUrl !== currentAiUrl || targetContentType !== (aiGeneratedData?.contentType ?? contentType)
-      : targetContentType !== (aiGeneratedData?.contentType ?? contentType) ||
-        (targetContentType === "note" && targetText !== (aiGeneratedData?.sourceText ?? ""));
+    let hasSourceChanged = false;
+
+    if (targetContentType !== (aiGeneratedData?.contentType ?? contentType)) {
+      hasSourceChanged = true;
+    } else if (isUrlBased) {
+      hasSourceChanged = targetUrl !== currentAiUrl;
+    } else if (targetContentType === "document") {
+      hasSourceChanged = targetFileId !== currentAiFileId;
+    } else if (targetContentType === "note") {
+      hasSourceChanged = targetText !== (aiGeneratedData?.sourceText ?? "");
+    }
 
     if (hasSourceChanged) {
       if (aiGeneratedData) {
@@ -161,27 +179,52 @@ export default function AddItemPage() {
     const snapshotText = sourceText.trim();
     const snapshotTitle = title.trim();
     const snapshotDesc = description.trim();
+    const snapshotDocumentFile = selectedDocumentFile;
+    const snapshotFileId = getFileId(selectedDocumentFile);
 
     setAiFeedback(null);
     setIsAiGenerating(true);
 
     try {
-      const result = await generateSmartCaptureAction({
-        contentType: snapshotContentType,
-        sourceUrl: snapshotUrl,
-        sourceText: snapshotText,
-        existingTitle: snapshotTitle,
-        existingDescription: snapshotDesc,
-      });
+      let result;
+      if (snapshotContentType === "document") {
+        if (!snapshotDocumentFile) {
+          setAiFeedback({
+            type: "info",
+            text: "Please select a document file (.pdf, .docx, .pptx, or .xlsx) for Smart Capture to read.",
+          });
+          setIsAiGenerating(false);
+          return;
+        }
 
-      // Prevent race conditions / out-of-order responses (Bug 5)
+        const formData = new FormData();
+        formData.append("contentType", snapshotContentType);
+        formData.append("sourceFile", snapshotDocumentFile);
+        if (snapshotUrl) formData.append("sourceUrl", snapshotUrl);
+        if (snapshotText) formData.append("sourceText", snapshotText);
+        if (snapshotTitle) formData.append("existingTitle", snapshotTitle);
+        if (snapshotDesc) formData.append("existingDescription", snapshotDesc);
+
+        result = await generateSmartCaptureAction(formData);
+      } else {
+        result = await generateSmartCaptureAction({
+          contentType: snapshotContentType,
+          sourceUrl: snapshotUrl,
+          sourceText: snapshotText,
+          existingTitle: snapshotTitle,
+          existingDescription: snapshotDesc,
+        });
+      }
+
+      // Prevent race conditions / out-of-order responses (Bug 5 & document race protection)
       if (thisRequestId !== activeAiRequestIdRef.current) {
         return;
       }
       if (
         sourceUrl.trim() !== snapshotUrl ||
         contentType !== snapshotContentType ||
-        sourceText.trim() !== snapshotText
+        sourceText.trim() !== snapshotText ||
+        getFileId(selectedDocumentFile) !== snapshotFileId
       ) {
         return;
       }
@@ -245,6 +288,7 @@ export default function AddItemPage() {
           generatedTags: appliedAiTags,
           sourceUrl: snapshotUrl,
           sourceText: snapshotText,
+          sourceFileId: snapshotFileId,
           contentType: snapshotContentType,
         });
 
@@ -273,11 +317,15 @@ export default function AddItemPage() {
           text: result.message || "Could not generate metadata with the provided information.",
         });
       }
-    } catch {
+    } catch (err) {
       if (thisRequestId === activeAiRequestIdRef.current) {
+        console.error("[Smart Capture Client Exception]", err);
         setAiFeedback({
           type: "info",
-          text: "Unable to reach the AI assistant. Please enter metadata manually.",
+          text:
+            err instanceof Error && err.message
+              ? err.message
+              : "Unable to reach the AI assistant. Please try again or enter metadata manually.",
         });
       }
     } finally {
@@ -385,6 +433,7 @@ export default function AddItemPage() {
     setIsAiAssisted(false);
     setAiGeneratedData(null);
     setAiFeedback(null);
+    setSelectedDocumentFile(null);
     if (sourceFileInputRef.current) sourceFileInputRef.current.value = "";
     if (previewImageInputRef.current) previewImageInputRef.current.value = "";
   }
@@ -479,14 +528,16 @@ export default function AddItemPage() {
   })();
 
   // Check if enough source context exists to enable Smart Capture
-  const isImageOrDoc = isImage || isDocument;
+  const isImageOnly = isImage;
+  const hasDocumentFile = Boolean(selectedDocumentFile && selectedDocumentFile.size > 0);
   const hasSourceContext =
+    (isDocument && hasDocumentFile) ||
     (isNote && sourceText.trim().length >= 5) ||
     ((isArticleOrUrl || isRepo || isVideo) && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isUrlType && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isOther && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0));
 
-  const isAiAvailable = !isImageOrDoc && hasSourceContext;
+  const isAiAvailable = !isImageOnly && hasSourceContext;
 
   // Determine whether AI-generated suggestions are currently active
   const hasAiSuggestions = Boolean(
@@ -595,7 +646,7 @@ export default function AddItemPage() {
                   sourceFile: undefined,
                   sourceText: undefined,
                 }));
-                invalidateAiSuggestions(sourceUrl, nextType, sourceText);
+                invalidateAiSuggestions(sourceUrl, nextType, sourceText, selectedDocumentFile);
               }}
               className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
             >
@@ -693,17 +744,25 @@ export default function AddItemPage() {
                   htmlFor="sourceFile"
                   className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
                 >
-                  Upload Document or PDF <span className="text-rose-500">*</span>
+                  Upload Document <span className="text-rose-500">*</span>
                 </label>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                  PDFs, documents, presentations, spreadsheets. Stored in Sanity File Assets.
+                  PDF (.pdf), Word (.docx), PowerPoint (.pptx), Excel (.xlsx). Up to 20 MB. Stored in Sanity File Assets.
                 </p>
                 <input
                   type="file"
                   id="sourceFile"
                   name="sourceFile"
                   ref={sourceFileInputRef}
-                  accept=".pdf,.doc,.docx,.txt,.rtf,.epub,.xls,.xlsx,.ppt,.pptx"
+                  accept=".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSelectedDocumentFile(file);
+                    if (errors.sourceFile) {
+                      setErrors((prev) => ({ ...prev, sourceFile: undefined }));
+                    }
+                    invalidateAiSuggestions(sourceUrl, contentType, sourceText, file);
+                  }}
                   className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
                 />
                 {errors.sourceFile && (
@@ -822,8 +881,10 @@ export default function AddItemPage() {
                   onClick={handleGenerateWithAi}
                   disabled={!isAiAvailable || isAiGenerating}
                   title={
-                    isImageOrDoc
-                      ? "AI extraction for images and documents will be added later"
+                    isImageOnly
+                      ? "AI extraction for images will be added later"
+                      : isDocument && !hasDocumentFile
+                      ? "Select a document file (.pdf, .docx, .pptx, or .xlsx) for Smart Capture to read"
                       : isVideo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a YouTube video URL for Smart Capture to analyze"
                       : isRepo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
@@ -831,7 +892,9 @@ export default function AddItemPage() {
                       : isArticleOrUrl && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a valid webpage URL (http:// or https://) for Smart Capture to read"
                       : !hasSourceContext
-                      ? "Provide source context (URL or notes) first"
+                      ? "Provide source context (document file, URL, or notes) first"
+                      : isDocument && hasDocumentFile
+                      ? "Read document and generate metadata with Groq AI"
                       : isVideo && isValidSourceUrl
                       ? "Read YouTube video and generate metadata with Groq AI"
                       : isRepo && isValidSourceUrl
@@ -858,7 +921,9 @@ export default function AddItemPage() {
                         />
                       </svg>
                       <span>
-                        {isVideo && isValidSourceUrl
+                        {isDocument && hasDocumentFile
+                          ? "Reading document and generating suggestions..."
+                          : isVideo && isValidSourceUrl
                           ? "Reading YouTube video metadata and generating suggestions..."
                           : isRepo && isValidSourceUrl
                           ? "Reading repository and generating metadata..."
@@ -915,10 +980,10 @@ export default function AddItemPage() {
               </div>
             )}
 
-            {/* Image / Document notice */}
-            {isImageOrDoc && (
+            {/* Image notice */}
+            {isImage && (
               <p className="text-xs text-zinc-500 dark:text-zinc-400 italic">
-                AI extraction for images and documents will be added later.
+                AI extraction for images will be added in a future update.
               </p>
             )}
 

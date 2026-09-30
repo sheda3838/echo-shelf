@@ -695,3 +695,149 @@ YouTube
 → Structured metadata
 → Groq
 → AI-assisted metadata
+
+## 2026-09-30 — Document Source Extraction
+
+### What I Built
+
+Implemented document extraction for Echo Shelf Smart Capture.
+
+Supported formats:
+
+- PDF
+- DOCX
+- PPTX
+- XLSX
+
+Each format is parsed server-side and converted into normalized text before being sent to Groq.
+
+### Document Extraction Flow
+
+Uploaded document
+→ Validate file
+→ Convert to Buffer
+→ Detect document type
+→ Format-specific parser
+→ Normalize extracted content
+→ Send structured context to Groq
+→ Generate editable title, description, and tags
+
+### Parsers Used
+
+- PDF → `pdf-parse`
+- DOCX → `mammoth`
+- PPTX → `pptx-text-parser`
+- XLSX → `xlsx` / SheetJS
+
+### Limits
+
+- Maximum document size: 20 MB
+- Maximum extracted context sent to Groq: 20,000 characters
+
+### Format Behavior
+
+PDF:
+- Extracts readable text
+- Tracks page count
+- Image-only/scanned PDFs are reported as unsupported for text extraction
+
+DOCX:
+- Extracts raw semantic text
+- Preserves meaningful paragraph separation
+
+PPTX:
+- Extracts slide text in order
+- Preserves slide boundaries
+
+XLSX:
+- Extracts non-empty sheets
+- Preserves sheet names and tabular row structure
+
+### Runtime Issues Discovered During Manual Testing
+
+The first implementation passed automated tests but failed in the real browser flow.
+
+Manual testing exposed three runtime issues.
+
+#### pdf-parse Import Failure
+
+`pdf-parse@1.1.1` executed a debug block from its package entry point during Next.js server bundling and attempted to read a missing test PDF.
+
+The extractor now imports the core parser directly:
+
+`pdf-parse/lib/pdf-parse.js`
+
+This bypasses the problematic debug entry code.
+
+#### Next.js Server Action File Size Limit
+
+Next.js Server Actions defaulted to a request body limit too small for document uploads.
+
+The Server Action body size limit was updated to support Echo Shelf's 20 MB document limit.
+
+#### Error Masking
+
+Document parser failures were originally caught by the generic Groq error handler and displayed as:
+
+"Unable to reach the AI assistant."
+
+Extraction and AI errors are now separated so the user receives accurate failure messages.
+
+### File State & Race Protection
+
+Document Smart Capture uses file identity information such as:
+
+- file name
+- file size
+- MIME type
+- last modified value
+
+Changing or replacing a document invalidates previous AI suggestions.
+
+Out-of-order requests are discarded so metadata from File A cannot appear after the user switches to File B.
+
+### Security
+
+- Parsing occurs server-side
+- Raw files are not sent directly to Groq
+- Document contents are treated as untrusted input
+- No macros, formulas, scripts, or embedded content are executed
+- File contents and secrets are not logged
+- Smart Capture parses the selected file directly without creating temporary Sanity assets
+
+### Verification
+
+Successfully tested end-to-end:
+
+- PDF
+- DOCX
+- PPTX
+- XLSX
+
+Also verified:
+
+- document replacement invalidation
+- Clear AI Suggestions
+- stale request protection
+- Notes regression
+- Article/URL regression
+- GitHub/GitLab regression
+- YouTube regression
+
+The real browser `/add → upload document → Generate with AI` flow was manually tested successfully.
+
+TypeScript and ESLint checks completed successfully.
+
+### Learning
+
+Automated parser tests alone were not enough.
+
+The real browser flow exposed framework-specific issues involving package bundling and Server Action request limits.
+
+Echo Shelf now follows:
+
+Document
+→ Format-specific parser
+→ Normalized text
+→ Groq
+→ Structured metadata

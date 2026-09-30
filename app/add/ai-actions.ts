@@ -4,6 +4,7 @@ import { Groq } from "groq-sdk";
 import { extractWebArticle } from "@/lib/extractors/webArticle";
 import { extractRepository } from "@/lib/extractors/repository";
 import { extractYouTubeVideo } from "@/lib/extractors/youtube";
+import { extractDocument } from "@/lib/extractors/document";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -11,6 +12,7 @@ export interface SmartCaptureInput {
   sourceText?: string;
   existingTitle?: string;
   existingDescription?: string;
+  sourceFile?: File | null;
 }
 
 export interface SmartCaptureResult {
@@ -32,15 +34,48 @@ const GROQ_MODEL = "openai/gpt-oss-120b";
  * Never exposes the API key, system prompts, or raw provider errors to the client.
  */
 export async function generateSmartCaptureAction(
-  input: SmartCaptureInput
+  input: SmartCaptureInput | FormData
 ): Promise<SmartCaptureResult> {
-  const { contentType, sourceUrl, sourceText, existingTitle, existingDescription } = input;
+  try {
+    let contentType: string;
+    let sourceUrl: string | undefined;
+    let sourceText: string | undefined;
+    let existingTitle: string | undefined;
+    let existingDescription: string | undefined;
+    let sourceFile: File | null = null;
+
+    if (typeof (input as FormData)?.get === "function") {
+      const fd = input as FormData;
+      contentType = (fd.get("contentType") as string)?.trim() || "";
+      sourceUrl = (fd.get("sourceUrl") as string)?.trim() || undefined;
+      sourceText = (fd.get("sourceText") as string)?.trim() || undefined;
+      existingTitle = (fd.get("existingTitle") as string)?.trim() || undefined;
+      existingDescription = (fd.get("existingDescription") as string)?.trim() || undefined;
+
+      const rawFile = fd.get("sourceFile");
+      const isFile =
+        typeof rawFile === "object" &&
+        rawFile !== null &&
+        "name" in rawFile &&
+        "size" in rawFile &&
+        "arrayBuffer" in rawFile &&
+        typeof (rawFile as File).arrayBuffer === "function";
+      sourceFile = isFile ? (rawFile as File) : null;
+    } else {
+      const rawInput = input as SmartCaptureInput;
+      contentType = rawInput.contentType;
+      sourceUrl = rawInput.sourceUrl;
+      sourceText = rawInput.sourceText;
+      existingTitle = rawInput.existingTitle;
+      existingDescription = rawInput.existingDescription;
+      sourceFile = rawInput.sourceFile || null;
+    }
 
   // 1. Check supported content types for first version
-  if (contentType === "image" || contentType === "document") {
+  if (contentType === "image") {
     return {
       success: false,
-      message: "AI extraction for images and documents will be added later.",
+      message: "AI extraction for images will be added later.",
     };
   }
 
@@ -185,6 +220,95 @@ export async function generateSmartCaptureAction(
       if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
       if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
     }
+  } else if (contentType === "document") {
+    if (!sourceFile || sourceFile.size === 0) {
+      if (!cleanText && !cleanDesc) {
+        return {
+          success: false,
+          message: "Please select a document file (.pdf, .docx, .pptx, or .xlsx) for Smart Capture to read.",
+        };
+      }
+      contextParts.push(`Content Type: Document`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+    } else {
+      console.log("[Document Smart Capture]", {
+        stage: "receive-file",
+        fileName: sourceFile.name,
+        mimeType: sourceFile.type,
+        size: sourceFile.size,
+      });
+
+      let fileBuffer: Buffer;
+      try {
+        const arrayBuffer = await sourceFile.arrayBuffer();
+        fileBuffer = Buffer.from(arrayBuffer);
+        console.log("[Document Smart Capture]", {
+          stage: "buffer-conversion",
+          fileName: sourceFile.name,
+          mimeType: sourceFile.type,
+          size: sourceFile.size,
+          bufferLength: fileBuffer.length,
+        });
+      } catch (convErr) {
+        console.error("[Document Smart Capture]", {
+          stage: "buffer-conversion",
+          fileName: sourceFile.name,
+          error: convErr instanceof Error ? convErr.message : String(convErr),
+        });
+        return {
+          success: false,
+          message: "Could not read the uploaded document buffer. Please try again.",
+        };
+      }
+
+      const extraction = await extractDocument(fileBuffer, sourceFile.name, sourceFile.type);
+
+      if (!extraction.success) {
+        console.error("[Document Smart Capture]", {
+          stage: "extraction-failed",
+          fileName: sourceFile.name,
+          mimeType: sourceFile.type,
+          size: sourceFile.size,
+          error: extraction.error,
+        });
+        return {
+          success: false,
+          message: extraction.error,
+        };
+      }
+
+      const doc = extraction.data;
+      console.log("[Document Smart Capture]", {
+        stage: "extraction-success",
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        extractedCharacters: doc.text.length,
+        pageCount: doc.pageCount,
+        slideCount: doc.slideCount,
+        sheetNames: doc.sheetNames,
+      });
+
+      contextParts.push(`Source type: Document`);
+      contextParts.push(`File name: ${doc.fileName}`);
+      contextParts.push(`File type: ${doc.fileType.toUpperCase()}`);
+      if (doc.fileType === "pdf" && doc.pageCount !== undefined) {
+        contextParts.push(`Pages: ${doc.pageCount}`);
+      } else if (doc.fileType === "pptx" && doc.slideCount !== undefined) {
+        contextParts.push(`Slides: ${doc.slideCount}`);
+      } else if (doc.fileType === "xlsx" && doc.sheetNames && doc.sheetNames.length > 0) {
+        contextParts.push(`Sheets: ${doc.sheetNames.join(", ")}`);
+      }
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
+      contextParts.push(
+        doc.fileType === "pptx"
+          ? `Extracted slide text:\n${doc.text}`
+          : `Extracted content:\n${doc.text}`
+      );
+    }
   } else if (contentType === "other") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
@@ -291,12 +415,24 @@ You must reply with valid JSON matching exactly this schema:
         tags,
       },
     };
-  } catch (error: unknown) {
-    // Log error internally without leaking credentials or raw stack traces to the user
-    console.error("Groq AI completion error:", error instanceof Error ? error.message : "Unknown error");
+  } catch (groqError: unknown) {
+    console.error("[Document Smart Capture]", {
+      stage: "groq-completion",
+      error: groqError instanceof Error ? groqError.message : "Unknown error",
+    });
     return {
       success: false,
-      message: "AI suggestion service encountered an error. Please try again or fill in the fields manually.",
+      message: "Unable to reach the AI assistant. Please try again or enter metadata manually.",
     };
   }
+} catch (topError: unknown) {
+  console.error("[Document Smart Capture]", {
+    stage: "server-action-unhandled",
+    error: topError instanceof Error ? topError.message : "Unknown error",
+  });
+  return {
+    success: false,
+    message: "An error occurred while analyzing the document. Please try again.",
+  };
+}
 }
