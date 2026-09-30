@@ -48,6 +48,7 @@ export default function AddItemPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceText, setSourceText] = useState("");
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   
   // Interactive tags state
   const [tags, setTags] = useState<string[]>([]);
@@ -107,7 +108,8 @@ export default function AddItemPage() {
     nextSourceUrl?: string,
     nextContentType?: ContentType,
     nextSourceText?: string,
-    nextDocumentFile?: File | null
+    nextDocumentFile?: File | null,
+    nextImageFile?: File | null
   ) {
     // Invalidate any in-flight AI requests immediately (prevents out-of-order race conditions)
     activeAiRequestIdRef.current++;
@@ -123,7 +125,10 @@ export default function AddItemPage() {
     const targetUrl = nextSourceUrl !== undefined ? nextSourceUrl.trim() : sourceUrl.trim();
     const targetContentType = nextContentType !== undefined ? nextContentType : contentType;
     const targetText = nextSourceText !== undefined ? nextSourceText.trim() : sourceText.trim();
-    const targetFile = nextDocumentFile !== undefined ? nextDocumentFile : selectedDocumentFile;
+    const targetFile =
+      targetContentType === "image"
+        ? (nextImageFile !== undefined ? nextImageFile : selectedImageFile)
+        : (nextDocumentFile !== undefined ? nextDocumentFile : selectedDocumentFile);
     const targetFileId = getFileId(targetFile);
     const currentAiFileId = aiGeneratedData?.sourceFileId ?? "";
 
@@ -134,7 +139,7 @@ export default function AddItemPage() {
       hasSourceChanged = true;
     } else if (isUrlBased) {
       hasSourceChanged = targetUrl !== currentAiUrl;
-    } else if (targetContentType === "document") {
+    } else if (targetContentType === "document" || targetContentType === "image") {
       hasSourceChanged = targetFileId !== currentAiFileId;
     } else if (targetContentType === "note") {
       hasSourceChanged = targetText !== (aiGeneratedData?.sourceText ?? "");
@@ -180,14 +185,36 @@ export default function AddItemPage() {
     const snapshotTitle = title.trim();
     const snapshotDesc = description.trim();
     const snapshotDocumentFile = selectedDocumentFile;
-    const snapshotFileId = getFileId(selectedDocumentFile);
+    const snapshotImageFile = selectedImageFile;
+    const currentSnapshotFile =
+      snapshotContentType === "image" ? snapshotImageFile : snapshotDocumentFile;
+    const snapshotFileId = getFileId(currentSnapshotFile);
 
     setAiFeedback(null);
     setIsAiGenerating(true);
 
     try {
       let result;
-      if (snapshotContentType === "document") {
+      if (snapshotContentType === "image") {
+        if (!snapshotImageFile) {
+          setAiFeedback({
+            type: "info",
+            text: "Please select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to read.",
+          });
+          setIsAiGenerating(false);
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("contentType", snapshotContentType);
+        formData.append("sourceFile", snapshotImageFile);
+        if (snapshotUrl) formData.append("sourceUrl", snapshotUrl);
+        if (snapshotText) formData.append("sourceText", snapshotText);
+        if (snapshotTitle) formData.append("existingTitle", snapshotTitle);
+        if (snapshotDesc) formData.append("existingDescription", snapshotDesc);
+
+        result = await generateSmartCaptureAction(formData);
+      } else if (snapshotContentType === "document") {
         if (!snapshotDocumentFile) {
           setAiFeedback({
             type: "info",
@@ -216,15 +243,17 @@ export default function AddItemPage() {
         });
       }
 
-      // Prevent race conditions / out-of-order responses (Bug 5 & document race protection)
+      // Prevent race conditions / out-of-order responses (Bug 5 & image/document race protection)
       if (thisRequestId !== activeAiRequestIdRef.current) {
         return;
       }
+      const currentActiveFile =
+        contentType === "image" ? selectedImageFile : selectedDocumentFile;
       if (
         sourceUrl.trim() !== snapshotUrl ||
         contentType !== snapshotContentType ||
         sourceText.trim() !== snapshotText ||
-        getFileId(selectedDocumentFile) !== snapshotFileId
+        getFileId(currentActiveFile) !== snapshotFileId
       ) {
         return;
       }
@@ -434,6 +463,7 @@ export default function AddItemPage() {
     setAiGeneratedData(null);
     setAiFeedback(null);
     setSelectedDocumentFile(null);
+    setSelectedImageFile(null);
     if (sourceFileInputRef.current) sourceFileInputRef.current.value = "";
     if (previewImageInputRef.current) previewImageInputRef.current.value = "";
   }
@@ -528,16 +558,17 @@ export default function AddItemPage() {
   })();
 
   // Check if enough source context exists to enable Smart Capture
-  const isImageOnly = isImage;
+  const hasImageFile = Boolean(selectedImageFile && selectedImageFile.size > 0);
   const hasDocumentFile = Boolean(selectedDocumentFile && selectedDocumentFile.size > 0);
   const hasSourceContext =
+    (isImage && hasImageFile) ||
     (isDocument && hasDocumentFile) ||
     (isNote && sourceText.trim().length >= 5) ||
     ((isArticleOrUrl || isRepo || isVideo) && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isUrlType && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isOther && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0));
 
-  const isAiAvailable = !isImageOnly && hasSourceContext;
+  const isAiAvailable = hasSourceContext;
 
   // Determine whether AI-generated suggestions are currently active
   const hasAiSuggestions = Boolean(
@@ -646,7 +677,7 @@ export default function AddItemPage() {
                   sourceFile: undefined,
                   sourceText: undefined,
                 }));
-                invalidateAiSuggestions(sourceUrl, nextType, sourceText, selectedDocumentFile);
+                invalidateAiSuggestions(sourceUrl, nextType, sourceText, selectedDocumentFile, selectedImageFile);
               }}
               className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
             >
@@ -719,14 +750,22 @@ export default function AddItemPage() {
                   Upload Image <span className="text-rose-500">*</span>
                 </label>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                  Photos, screenshots, diagrams, illustrations. PNG, JPG, WEBP, GIF, SVG. Stored in Sanity Assets.
+                  Photos, screenshots, diagrams, illustrations. PNG, JPG, JPEG, WEBP. Up to 10 MB. Stored in Sanity Assets.
                 </p>
                 <input
                   type="file"
                   id="sourceFile"
                   name="sourceFile"
                   ref={sourceFileInputRef}
-                  accept="image/*"
+                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSelectedImageFile(file);
+                    if (errors.sourceFile) {
+                      setErrors((prev) => ({ ...prev, sourceFile: undefined }));
+                    }
+                    invalidateAiSuggestions(sourceUrl, contentType, sourceText, selectedDocumentFile, file);
+                  }}
                   className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
                 />
                 {errors.sourceFile && (
@@ -881,8 +920,8 @@ export default function AddItemPage() {
                   onClick={handleGenerateWithAi}
                   disabled={!isAiAvailable || isAiGenerating}
                   title={
-                    isImageOnly
-                      ? "AI extraction for images will be added later"
+                    isImage && !hasImageFile
+                      ? "Select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to read"
                       : isDocument && !hasDocumentFile
                       ? "Select a document file (.pdf, .docx, .pptx, or .xlsx) for Smart Capture to read"
                       : isVideo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
@@ -892,7 +931,9 @@ export default function AddItemPage() {
                       : isArticleOrUrl && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a valid webpage URL (http:// or https://) for Smart Capture to read"
                       : !hasSourceContext
-                      ? "Provide source context (document file, URL, or notes) first"
+                      ? "Provide source context (image, document file, URL, or notes) first"
+                      : isImage && hasImageFile
+                      ? "Read image text and generate metadata with Groq AI"
                       : isDocument && hasDocumentFile
                       ? "Read document and generate metadata with Groq AI"
                       : isVideo && isValidSourceUrl
@@ -921,7 +962,9 @@ export default function AddItemPage() {
                         />
                       </svg>
                       <span>
-                        {isDocument && hasDocumentFile
+                        {isImage && hasImageFile
+                          ? "Reading image text and generating suggestions..."
+                          : isDocument && hasDocumentFile
                           ? "Reading document and generating suggestions..."
                           : isVideo && isValidSourceUrl
                           ? "Reading YouTube video metadata and generating suggestions..."

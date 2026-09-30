@@ -841,3 +841,167 @@ Document
 → Normalized text
 → Groq
 → Structured metadata
+
+## 2026-09-30 — Image OCR Source Extraction
+
+### What I Built
+
+Implemented the final Smart Capture extraction type for Echo Shelf: Image OCR.
+
+Echo Shelf can now analyze text-heavy images such as:
+
+- Screenshots
+- Posters
+- Infographics
+- UI screenshots
+- Diagrams with labels
+- Slide screenshots
+- Scanned text images
+
+### Image Extraction Flow
+
+Image upload
+→ Validate file
+→ Convert to Buffer
+→ Tesseract.js OCR
+→ Normalize extracted text
+→ Check OCR quality
+→ Send structured context to Groq
+→ Generate editable title, description, and tags
+
+### OCR Engine
+
+Used:
+
+`Tesseract.js`
+
+OCR runs server-side and does not require an external OCR API key.
+
+### Supported Image Formats
+
+- PNG
+- JPG
+- JPEG
+- WEBP
+
+### Limits
+
+- Maximum image size: 10 MB
+- OCR context limit: 12,000 characters
+- Minimum useful OCR threshold: 20 meaningful characters
+
+### OCR Context
+
+The Groq context includes:
+
+- File name
+- OCR confidence
+- Extracted visible text
+
+The filename is used only as supporting context.
+
+Groq is instructed not to invent visual information that was not extracted through OCR.
+
+### Smart Capture Integration
+
+For Image content:
+
+Image
+→ OCR
+→ Extracted text
+→ Groq
+→ Suggested title, description, and tags
+
+Existing Smart Capture behavior remains intact:
+
+- Manual metadata is preserved
+- AI metadata is tracked separately
+- Changing the image invalidates stale suggestions
+- AI tags do not accumulate across regenerations
+- Clear AI Suggestions removes only AI-generated metadata
+- Stale OCR/AI responses cannot overwrite a newly selected image
+
+### Error Handling
+
+Handled:
+
+- Invalid image file
+- Unsupported image format
+- Oversized image
+- OCR processing failure
+- Insufficient readable text
+- Groq failure after successful OCR
+
+Images with insufficient readable text fall back to:
+
+`Not enough readable text was found in this image. Add a description manually.`
+
+### Manual Verification
+
+A social-media content moderation infographic was manually tested.
+
+OCR successfully extracted the visible points, including:
+
+- Protecting users from harm
+- Compliance with laws and regulations
+- Maintaining platform reputation
+- Fostering healthy community engagement
+- Building trust and promoting diversity
+
+Smart Capture generated:
+
+- A relevant title
+- A grounded summary
+- Relevant tags related to social media moderation, user protection, compliance, and community engagement
+
+The generated metadata accurately reflected the image content.
+
+### Regression Verification
+
+Confirmed existing extraction flows continue working:
+
+- Notes
+- Articles / generic URLs
+- GitHub / GitLab repositories
+- YouTube videos
+- Documents
+
+TypeScript and ESLint checks completed successfully.
+
+### Limitation
+
+Echo Shelf currently understands images through extracted visible text only.
+
+It does not yet perform full visual scene understanding such as:
+
+- Object recognition
+- Color analysis
+- Visual composition understanding
+- Semantic chart interpretation
+- Image-only photo understanding
+
+### Learning
+
+Different source types require specialized extraction strategies.
+
+Echo Shelf Smart Capture now supports:
+
+Notes
+→ Direct text
+
+Articles / URLs
+→ Mozilla Readability
+
+GitHub / GitLab
+→ Provider APIs
+
+YouTube
+→ YouTube Data API
+
+Documents
+→ Format-specific parsers
+
+Images
+→ Tesseract.js OCR
+
+All extracted content is normalized before being sent to Groq.

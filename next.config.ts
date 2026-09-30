@@ -6,7 +6,13 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "20mb",
     },
   },
-  serverExternalPackages: ["pdf-parse", "mammoth", "xlsx", "pptx-text-parser"],
+  serverExternalPackages: [
+    "pdf-parse",
+    "mammoth",
+    "xlsx",
+    "pptx-text-parser",
+    "tesseract.js",
+  ],
 };
 
 export default nextConfig;

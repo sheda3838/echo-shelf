@@ -5,6 +5,7 @@ import { extractWebArticle } from "@/lib/extractors/webArticle";
 import { extractRepository } from "@/lib/extractors/repository";
 import { extractYouTubeVideo } from "@/lib/extractors/youtube";
 import { extractDocument } from "@/lib/extractors/document";
+import { extractImage } from "@/lib/extractors/image";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -71,15 +72,7 @@ export async function generateSmartCaptureAction(
       sourceFile = rawInput.sourceFile || null;
     }
 
-  // 1. Check supported content types for first version
-  if (contentType === "image") {
-    return {
-      success: false,
-      message: "AI extraction for images will be added later.",
-    };
-  }
-
-  // 2. Validate API key availability
+  // 1. Validate API key availability
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     console.error("GROQ_API_KEY is not configured in server environment.");
@@ -309,6 +302,85 @@ export async function generateSmartCaptureAction(
           : `Extracted content:\n${doc.text}`
       );
     }
+  } else if (contentType === "image") {
+    if (!sourceFile || sourceFile.size === 0) {
+      if (!cleanText && !cleanDesc) {
+        return {
+          success: false,
+          message: "Please select an image file (.png, .jpg, .jpeg, or .webp) for Smart Capture to read.",
+        };
+      }
+      contextParts.push(`Content Type: Image`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+    } else {
+      console.log("[Image Smart Capture]", {
+        stage: "receive-file",
+        fileName: sourceFile.name,
+        mimeType: sourceFile.type,
+        size: sourceFile.size,
+      });
+
+      let fileBuffer: Buffer;
+      try {
+        const arrayBuffer = await sourceFile.arrayBuffer();
+        fileBuffer = Buffer.from(arrayBuffer);
+        console.log("[Image Smart Capture]", {
+          stage: "buffer-conversion",
+          fileName: sourceFile.name,
+          mimeType: sourceFile.type,
+          size: sourceFile.size,
+          bufferLength: fileBuffer.length,
+        });
+      } catch (convErr) {
+        console.error("[Image Smart Capture]", {
+          stage: "buffer-conversion",
+          fileName: sourceFile.name,
+          error: convErr instanceof Error ? convErr.message : String(convErr),
+        });
+        return {
+          success: false,
+          message: "Could not read the uploaded image buffer. Please try again.",
+        };
+      }
+
+      const extraction = await extractImage(fileBuffer, sourceFile.name, sourceFile.type);
+
+      if (!extraction.success) {
+        console.error("[Image Smart Capture]", {
+          stage: "extraction-failed",
+          fileName: sourceFile.name,
+          mimeType: sourceFile.type,
+          size: sourceFile.size,
+          error: extraction.error,
+        });
+        return {
+          success: false,
+          message: extraction.error,
+        };
+      }
+
+      const img = extraction.data;
+      console.log("[Image Smart Capture]", {
+        stage: "extraction-success",
+        fileName: img.fileName,
+        mimeType: img.mimeType,
+        extractedCharacters: img.text.length,
+        ocrConfidence: img.ocrConfidence,
+      });
+
+      contextParts.push(`Source type: Image`);
+      contextParts.push(`Extraction method: OCR`);
+      contextParts.push(`File name: ${img.fileName}`);
+      if (img.ocrConfidence !== undefined && !isNaN(img.ocrConfidence)) {
+        contextParts.push(`OCR confidence: ${img.ocrConfidence}%`);
+      }
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
+      contextParts.push(`Extracted visible text:\n${img.text}`);
+    }
   } else if (contentType === "other") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
@@ -340,7 +412,7 @@ Requirements:
 - "title": A concise, descriptive title representing the content (max 80 characters).
 - "description": A clear, informative summary of the content's purpose and key takeaways (2 to 3 sentences).
 - "tags": An array of 3 to 6 short, lowercase, relevant keyword tags (hyphenated if multi-word, no spaces, no '#', no duplicates).
-- Do NOT hallucinate or invent facts that are not supported by the provided context.
+- Do NOT hallucinate or invent facts that are not supported by the provided context. If the source is an image, use only the visible text extracted via OCR and do not invent visual elements.
 
 You must reply with valid JSON matching exactly this schema:
 {
@@ -416,7 +488,7 @@ You must reply with valid JSON matching exactly this schema:
       },
     };
   } catch (groqError: unknown) {
-    console.error("[Document Smart Capture]", {
+    console.error("[Smart Capture]", {
       stage: "groq-completion",
       error: groqError instanceof Error ? groqError.message : "Unknown error",
     });
@@ -426,13 +498,13 @@ You must reply with valid JSON matching exactly this schema:
     };
   }
 } catch (topError: unknown) {
-  console.error("[Document Smart Capture]", {
+  console.error("[Smart Capture]", {
     stage: "server-action-unhandled",
     error: topError instanceof Error ? topError.message : "Unknown error",
   });
   return {
     success: false,
-    message: "An error occurred while analyzing the document. Please try again.",
+    message: "An error occurred while analyzing the content. Please try again.",
   };
 }
 }
