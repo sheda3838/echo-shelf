@@ -1298,3 +1298,189 @@ Verified manually with:
 - Semantic knowledge-management note
 
 The expected related items appeared correctly, and unrelated items were not forced into the shortlist.
+
+## 2026-09-30 — Library, Item Detail Pages & Post-Save Navigation
+
+### What I Built
+
+Built the main Echo Shelf browsing experience so saved knowledge can now be viewed directly inside the app instead of relying on Sanity Studio.
+
+Echo Shelf now has:
+
+- A real Library homepage
+- Search and content-type filtering
+- Saved item cards
+- Dedicated `/item/[id]` detail pages
+- Source-specific rendering
+- Smart Connections placeholder area
+- Post-save redirect into the saved item page
+
+### Library Architecture
+
+The `/` route is now the main Echo Shelf Library.
+
+The page fetches lightweight saved-item metadata from Sanity server-side and passes it to an interactive client Library view.
+
+Library items are ordered newest first.
+
+The library query avoids loading heavy source content and file bodies unnecessarily.
+
+### Library Features
+
+Users can:
+
+- Search saved knowledge by title, description, and tags
+- Filter by content type
+- Browse saved items as responsive cards
+- View favorite state
+- See saved dates
+- See image thumbnails when available
+- See connection counts when connections already exist
+- Open any saved item directly from the Library
+
+Supported filters include:
+
+- All
+- Notes
+- Articles
+- Videos
+- Repositories
+- Documents
+- Images
+- URLs
+- Other
+
+### Saved Item Cards
+
+Each Library card displays:
+
+- Content type
+- Title
+- Description preview
+- Tags
+- Saved date
+- Favorite indicator
+- Image preview when available
+- Connection count when available
+
+Cards link directly to:
+
+`/item/[id]`
+
+### Saved Item Detail Page
+
+Created a dedicated dynamic route:
+
+`/item/[id]`
+
+The page retrieves the complete saved item from Sanity and renders it as a knowledge item rather than a CMS document.
+
+### Source-Specific Rendering
+
+Different source types are displayed appropriately.
+
+Notes:
+- Original note text with preserved line breaks
+
+Articles / URLs:
+- Original source link
+
+Repositories:
+- Repository link
+
+Videos:
+- YouTube/source link
+
+Documents:
+- File name
+- Extension
+- File size
+- Open Document link
+
+Images:
+- Responsive saved image preview
+
+Other:
+- Displays available URL and/or text safely
+
+### Smart Connections Preparation
+
+The saved-item detail page now includes a dedicated:
+
+`Smart Connections`
+
+section.
+
+If connections exist, the page can already render:
+
+- Connected item
+- Strength
+- Relationship type
+- Explanation
+
+If no connections exist, a placeholder is displayed.
+
+No Groq calls are performed yet.
+
+This creates the final UI location needed for the next Smart Connections phase.
+
+### Post-Save Flow
+
+The item creation flow now works as:
+
+Add Item
+→ Save to Sanity
+→ receive created document ID
+→ redirect to `/item/[id]`
+→ view saved item inside Echo Shelf
+
+Users no longer need to visit Sanity Studio to view newly created content.
+
+Sanity Studio remains available only as an admin/development tool.
+
+### Responsive Design
+
+Verified at:
+
+- 375px mobile
+- 768px tablet
+- desktop
+
+The Library adapts from one to multiple columns, filter controls remain usable on small screens, and item detail content stays readable across viewports.
+
+### Verification
+
+Confirmed:
+
+- Library loads existing Sanity items
+- 12 Smart Connections seed items appear
+- Search works
+- Content-type filters work
+- Cards open the correct detail page
+- Notes render correctly
+- Source-specific item views work
+- Missing items return a clean 404
+- Saving redirects to the new item's detail page
+- Existing Smart Capture remains functional
+- Pre-save Potentially Related suggestions remain functional
+
+Quality checks:
+
+- `npm run test:connections` — passed
+- `npx tsc --noEmit` — 0 errors
+- `npm run lint` — 0 errors / 0 warnings
+
+### Product Flow
+
+Echo Shelf now has a complete core navigation loop:
+
+Library
+→ Add Item
+→ Smart Capture
+→ Potentially Related
+→ Save
+→ Saved Item Detail
+→ Back to Library
+
+This prepares the application for persistent, AI-generated Smart Connections.
+

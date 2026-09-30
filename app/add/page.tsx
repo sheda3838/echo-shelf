@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { saveItemAction, type ContentType } from "./actions";
 import { generateSmartCaptureAction } from "./ai-actions";
 import {
@@ -46,6 +47,7 @@ function getFileId(file: File | null | undefined): string {
 }
 
 export default function AddItemPage() {
+  const router = useRouter();
   const [contentType, setContentType] = useState<ContentType>("article");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -611,6 +613,11 @@ export default function AddItemPage() {
       try {
         const res = await saveItemAction(formData);
         if (res.success) {
+          const createdId = res.id || res.itemId;
+          if (createdId) {
+            router.push(`/item/${createdId}`);
+            return;
+          }
           setSuccessMessage(res.message || "Item saved successfully to Echo Shelf!");
           handleReset();
         } else {
@@ -679,7 +686,7 @@ export default function AddItemPage() {
               href="/"
               className="text-xs uppercase tracking-wider font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 transition-colors"
             >
-              ← Back to Home
+              ← Back to Library
             </Link>
             <Link
               href="/studio"

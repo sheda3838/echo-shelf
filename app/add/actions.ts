@@ -17,6 +17,7 @@ export interface ActionResponse {
   errors?: Record<string, string>;
   message?: string;
   itemId?: string;
+  id?: string;
 }
 
 const ALLOWED_CONTENT_TYPES: ContentType[] = [
@@ -242,6 +243,7 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
 
     return {
       success: true,
+      id: createdDoc._id,
       itemId: createdDoc._id,
       message: `"${title}" has been saved to Echo Shelf successfully!`,
     };
