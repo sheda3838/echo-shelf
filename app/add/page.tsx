@@ -460,6 +460,7 @@ export default function AddItemPage() {
   const isUrlType = ["article", "video", "repo", "url"].includes(contentType);
   const isArticleOrUrl = contentType === "article" || contentType === "url";
   const isRepo = contentType === "repo";
+  const isVideo = contentType === "video";
   const isImage = contentType === "image";
   const isDocument = contentType === "document";
   const isNote = contentType === "note";
@@ -481,7 +482,7 @@ export default function AddItemPage() {
   const isImageOrDoc = isImage || isDocument;
   const hasSourceContext =
     (isNote && sourceText.trim().length >= 5) ||
-    ((isArticleOrUrl || isRepo) && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
+    ((isArticleOrUrl || isRepo || isVideo) && (isValidSourceUrl || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isUrlType && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0)) ||
     (isOther && (sourceUrl.trim().length > 0 || sourceText.trim().length > 0 || description.trim().length > 0));
 
@@ -823,12 +824,16 @@ export default function AddItemPage() {
                   title={
                     isImageOrDoc
                       ? "AI extraction for images and documents will be added later"
+                      : isVideo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
+                      ? "Enter a YouTube video URL for Smart Capture to analyze"
                       : isRepo && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a GitHub or GitLab repository URL for Smart Capture to analyze"
                       : isArticleOrUrl && !isValidSourceUrl && !sourceText.trim() && !description.trim()
                       ? "Enter a valid webpage URL (http:// or https://) for Smart Capture to read"
                       : !hasSourceContext
                       ? "Provide source context (URL or notes) first"
+                      : isVideo && isValidSourceUrl
+                      ? "Read YouTube video and generate metadata with Groq AI"
                       : isRepo && isValidSourceUrl
                       ? "Read repository and generate metadata with Groq AI"
                       : isArticleOrUrl && isValidSourceUrl
@@ -853,7 +858,9 @@ export default function AddItemPage() {
                         />
                       </svg>
                       <span>
-                        {isRepo && isValidSourceUrl
+                        {isVideo && isValidSourceUrl
+                          ? "Reading YouTube video metadata and generating suggestions..."
+                          : isRepo && isValidSourceUrl
                           ? "Reading repository and generating metadata..."
                           : isArticleOrUrl && isValidSourceUrl
                           ? "Reading page and generating metadata..."

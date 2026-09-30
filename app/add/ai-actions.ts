@@ -3,6 +3,7 @@
 import { Groq } from "groq-sdk";
 import { extractWebArticle } from "@/lib/extractors/webArticle";
 import { extractRepository } from "@/lib/extractors/repository";
+import { extractYouTubeVideo } from "@/lib/extractors/youtube";
 
 export interface SmartCaptureInput {
   contentType: string;
@@ -151,24 +152,39 @@ export async function generateSmartCaptureAction(
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {
         success: false,
-        message: "Please enter a source URL or some text context for this item.",
+        message: "Please enter a YouTube video URL for Smart Capture to analyze.",
       };
     }
 
-    // Check if only bare URL was provided without text context
-    if (cleanUrl && !cleanText && !cleanDesc) {
-      return {
-        success: false,
-        message:
-          "Dedicated AI extraction for videos will be added later. Please add some notes, key takeaways, or an excerpt so the AI has context.",
-      };
-    }
+    if (cleanUrl) {
+      const extraction = await extractYouTubeVideo(cleanUrl);
+      if (!extraction.success) {
+        return {
+          success: false,
+          message: extraction.error,
+        };
+      }
 
-    contextParts.push(`Content Type: Video`);
-    if (cleanUrl) contextParts.push(`Source URL: ${cleanUrl}`);
-    if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
-    if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
-    if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+      const video = extraction.data;
+      contextParts.push(`Source type: Video`);
+      contextParts.push(`Provider: YouTube`);
+      contextParts.push(`Video title: ${video.title}`);
+      if (video.channelTitle) contextParts.push(`Channel: ${video.channelTitle}`);
+      if (video.publishedAt) contextParts.push(`Published: ${video.publishedAt}`);
+      if (video.duration) contextParts.push(`Duration: ${video.duration}`);
+      if (video.tags && video.tags.length > 0) contextParts.push(`YouTube tags: ${video.tags.join(", ")}`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`User Additional Notes:\n${cleanText}`);
+      if (video.description) {
+        contextParts.push(`Video description:\n${video.description}`);
+      }
+    } else {
+      contextParts.push(`Content Type: Video`);
+      if (cleanTitle) contextParts.push(`User Title Hint: ${cleanTitle}`);
+      if (cleanDesc) contextParts.push(`User Context Notes: ${cleanDesc}`);
+      if (cleanText) contextParts.push(`Source Text / Content:\n${cleanText}`);
+    }
   } else if (contentType === "other") {
     if (!cleanUrl && !cleanText && !cleanDesc) {
       return {

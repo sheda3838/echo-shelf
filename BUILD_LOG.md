@@ -583,3 +583,115 @@ GitHub / GitLab
 → Repository metadata + README
 → Groq
 → Structured metadata
+
+## 2026-09-30 — YouTube Video Source Extraction
+
+### What I Built
+
+Implemented a dedicated YouTube source extraction layer for Echo Shelf Smart Capture.
+
+Instead of asking Groq to infer video content from a URL, Echo Shelf now retrieves real YouTube metadata using the official YouTube Data API v3.
+
+### Video Extraction Flow
+
+YouTube URL
+→ Parse video ID
+→ YouTube Data API v3
+→ Normalize video metadata
+→ Send structured context to Groq
+→ Generate editable title, description, and tags
+
+### Supported YouTube URLs
+
+Echo Shelf supports:
+
+- Standard YouTube watch URLs
+- `youtu.be` short links
+- YouTube Shorts URLs
+- Embed URLs
+- Legacy `/v/` URLs
+- URLs containing additional query parameters such as timestamps or playlists
+
+### Metadata Extracted
+
+The extractor retrieves:
+
+- Video title
+- Video description
+- Channel name
+- Channel ID
+- Published date
+- YouTube tags
+- Video duration
+- Thumbnail URL
+
+The video description is cleaned and capped at 15,000 characters before being sent to Groq.
+
+### Smart Capture Integration
+
+For `video` content:
+
+YouTube URL
+→ YouTube extractor
+→ Structured metadata
+→ Groq
+→ Suggested title, description, and tags
+
+Existing Smart Capture behavior remains intact:
+
+- Manual values are preserved
+- AI-generated tags are replaced correctly on regeneration
+- Changing the source invalidates stale suggestions
+- Clear AI Suggestions removes only AI-generated content
+- Stale async responses cannot update a newer source
+
+### Limitations
+
+This version uses YouTube metadata only.
+
+Transcript extraction is intentionally not included in the current MVP.
+
+If a video's description and tags contain limited information, Smart Capture may have less context about the actual video content.
+
+Transcript-based understanding can be added later as an enhancement.
+
+### Error Handling
+
+Handled:
+
+- Missing YouTube API configuration
+- Invalid YouTube URLs
+- Unsupported video providers
+- Private/deleted/unavailable videos
+- YouTube API quota limits
+- Network and timeout failures
+
+### Verification
+
+Successfully tested:
+
+- Standard watch URL
+- `youtu.be` URL
+- YouTube Shorts URL
+- Invalid YouTube URL
+- Nonexistent video
+- Unsupported Vimeo URL
+- End-to-end YouTube → Groq Smart Capture flow
+
+Regression tests for Article/URL and GitHub/GitLab extraction continued to pass.
+
+TypeScript and ESLint checks completed successfully.
+
+### Learning
+
+Different source types require different extraction strategies.
+
+For YouTube, structured platform metadata is more reliable than webpage scraping.
+
+Echo Shelf now uses:
+
+YouTube
+→ Official API
+→ Structured metadata
+→ Groq
+→ AI-assisted metadata
