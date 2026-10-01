@@ -1924,3 +1924,210 @@ Examples:
 Descriptions are kept concise at 1–2 sentences while title and tag generation remain unchanged.
 
 Manual testing with both a Docker networking note and an image confirmed the revised behavior works as expected.
+
+
+## 2026-10-01 — Exact Duplicate Detection
+
+### What I Built
+
+Implemented deterministic exact duplicate detection for Echo Shelf.
+
+The feature checks whether the same source or content already exists before saving a new item.
+
+It does not use Groq or any AI-based similarity.
+
+### Duplicate Detection Strategy
+
+Duplicate identity is derived from the actual source rather than metadata such as title, description, or tags.
+
+Different content types use different fingerprint strategies.
+
+#### URL-Based Content
+
+Used for:
+
+- Articles
+- URLs
+- Repositories
+- Videos
+- Other URL-based resources
+
+URLs are normalized before hashing.
+
+Normalization includes:
+
+- Lowercasing protocol and hostname
+- Removing URL fragments
+- Removing unnecessary trailing slashes
+- Removing tracking parameters such as `utm_*`, `fbclid`, and `gclid`
+- Preserving meaningful query parameters such as YouTube video IDs
+- Sorting remaining query parameters for deterministic output
+
+The normalized URL is hashed with SHA-256.
+
+Fingerprint format:
+
+`url:<sha256>`
+
+#### Notes
+
+Note text is normalized by:
+
+- Trimming whitespace
+- Normalizing line endings
+- Collapsing repeated whitespace
+- Lowercasing text
+
+The normalized note content is then hashed with SHA-256.
+
+Fingerprint format:
+
+`note:<sha256>`
+
+This allows minor spacing or capitalization differences to still be detected as the same note.
+
+#### Documents & Images
+
+Uploaded file bytes are hashed directly using SHA-256.
+
+The filename is not included.
+
+This means:
+
+`report.pdf`
+
+and:
+
+`renamed-report.pdf`
+
+are still detected as the same file if their underlying bytes are identical.
+
+Fingerprint format:
+
+`file:<sha256>`
+
+### Sanity Schema
+
+Added an optional hidden field to `savedItem`:
+
+`sourceFingerprint`
+
+This stores the deterministic fingerprint used for future exact duplicate checks.
+
+### Pre-Save Flow
+
+The Save flow now works as:
+
+Save to Echo Shelf
+→ Generate source fingerprint
+→ Query Sanity for matching fingerprint
+→ If no duplicate: save normally
+→ If duplicate: pause save and show warning
+
+### Duplicate Warning UI
+
+When an exact duplicate is found, Echo Shelf displays:
+
+`EXACT DUPLICATE FOUND`
+
+along with:
+
+- Existing item title
+- Content type
+- Description
+- Saved date
+
+Available actions:
+
+`View Existing Item ↗`
+
+and:
+
+`Save Anyway`
+
+The existing item opens in a new tab so the current Add Item form remains untouched.
+
+### Save Anyway
+
+Duplicate detection acts as a warning rather than a permanent block.
+
+Users can intentionally create another copy using:
+
+`Save Anyway`
+
+The duplicate item is still saved with the same deterministic fingerprint.
+
+### Duplicate Warning Invalidation
+
+If the source changes after a duplicate warning appears, the warning is cleared immediately.
+
+This applies to changes in:
+
+- Source URL
+- Note text
+- Uploaded document
+- Uploaded image
+- Content type
+
+This prevents a stale duplicate warning from remaining attached to different content.
+
+### Existing Library Backfill
+
+Created and executed a one-time fingerprint migration for existing saved items.
+
+All 14 existing Echo Shelf items were inspected and backfilled with deterministic source fingerprints.
+
+This allows duplicate detection to work against content saved before the feature existed.
+
+### Verification
+
+Successfully tested:
+
+- URL trailing-slash normalization
+- Tracking parameter removal
+- YouTube video ID preservation
+- Note whitespace and casing normalization
+- String hashing determinism
+- File hashing determinism
+- Same file with different filename
+- Unique content detection
+- Existing-item duplicate lookup
+- Duplicate save blocking
+- Save Anyway override
+- Matching fingerprints across intentionally duplicated records
+
+### Regression Verification
+
+Existing functionality remained intact:
+
+- Smart Capture
+- Potentially Related
+- Smart Connections
+- Knowledge Clusters
+- Contextual Rediscovery
+- Library
+- Post-save navigation
+- Document and image uploads
+
+Quality checks passed:
+
+- `npm run test:duplicates`
+- `npm run test:connections`
+- `npm run test:clusters`
+- `npm run test:rediscovery`
+- `npx tsc --noEmit`
+- `npm run lint`
+
+### Design Decision
+
+Exact duplicates are handled deterministically rather than with AI.
+
+Echo Shelf now uses:
+
+URL / text / file source
+→ Normalize
+→ SHA-256 fingerprint
+→ Sanity lookup
+→ Warn before save
+
+Semantic or near-duplicate detection remains outside the current scope.

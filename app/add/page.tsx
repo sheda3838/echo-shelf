@@ -10,6 +10,10 @@ import {
   lookupConnectionCandidatesAction,
   type PreSaveCandidate,
 } from "./connection-actions";
+import {
+  checkDuplicateAction,
+  type DuplicateCheckResult,
+} from "./duplicate-actions";
 
 interface FormErrors {
   contentType?: string;
@@ -71,6 +75,15 @@ export default function AddItemPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Exact duplicate detection state
+  const [duplicateWarning, setDuplicateWarning] = useState<NonNullable<DuplicateCheckResult["item"]> | null>(null);
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
+
+  function clearDuplicateWarning() {
+    setDuplicateWarning(null);
+    setAllowDuplicate(false);
+  }
 
   const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const previewImageInputRef = useRef<HTMLInputElement>(null);
@@ -557,6 +570,7 @@ export default function AddItemPage() {
     setAiFeedback(null);
     setSelectedDocumentFile(null);
     setSelectedImageFile(null);
+    clearDuplicateWarning();
     if (sourceFileInputRef.current) sourceFileInputRef.current.value = "";
     if (previewImageInputRef.current) previewImageInputRef.current.value = "";
     invalidateCandidates();
@@ -571,6 +585,15 @@ export default function AddItemPage() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    executeSave(false);
+  }
+
+  function handleSaveAnyway() {
+    setAllowDuplicate(true);
+    executeSave(true);
+  }
+
+  function executeSave(isExplicitOverride: boolean) {
     setSuccessMessage(null);
 
     // If there's an unadded tag in the tag input, add it before submitting
@@ -600,6 +623,10 @@ export default function AddItemPage() {
     formData.append("sourceUrl", sourceUrl.trim());
     formData.append("sourceText", sourceText.trim());
 
+    if (isExplicitOverride || allowDuplicate) {
+      formData.append("allowDuplicate", "true");
+    }
+
     const sourceFile = sourceFileInputRef.current?.files?.[0];
     if (sourceFile) {
       formData.append("sourceFile", sourceFile);
@@ -612,7 +639,28 @@ export default function AddItemPage() {
 
     startTransition(async () => {
       try {
+        // Step A: Pre-save duplicate check unless overridden
+        if (!isExplicitOverride && !allowDuplicate) {
+          const dupCheckData = new FormData();
+          dupCheckData.append("contentType", contentType);
+          if (sourceUrl.trim()) dupCheckData.append("sourceUrl", sourceUrl.trim());
+          if (sourceText.trim()) dupCheckData.append("sourceText", sourceText.trim());
+          if (sourceFile) dupCheckData.append("sourceFile", sourceFile);
+
+          const dupCheckRes = await checkDuplicateAction(dupCheckData);
+          if (dupCheckRes.duplicate && dupCheckRes.item) {
+            setDuplicateWarning(dupCheckRes.item);
+            return;
+          }
+        }
+
+        // Step B: Actual save action
         const res = await saveItemAction(formData);
+        if (res.isDuplicate && res.duplicateItem) {
+          setDuplicateWarning(res.duplicateItem);
+          return;
+        }
+
         if (res.success) {
           const createdId = res.id || res.itemId;
           if (createdId) {
@@ -755,6 +803,7 @@ export default function AddItemPage() {
               onChange={(e) => {
                 const nextType = e.target.value as ContentType;
                 setContentType(nextType);
+                clearDuplicateWarning();
                 setErrors((prev) => ({
                   ...prev,
                   sourceUrl: undefined,
@@ -804,6 +853,7 @@ export default function AddItemPage() {
                   onChange={(e) => {
                     const nextUrl = e.target.value;
                     setSourceUrl(nextUrl);
+                    clearDuplicateWarning();
                     if (errors.sourceUrl) {
                       setErrors((prev) => ({ ...prev, sourceUrl: undefined }));
                     }
@@ -845,6 +895,7 @@ export default function AddItemPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     setSelectedImageFile(file);
+                    clearDuplicateWarning();
                     if (errors.sourceFile) {
                       setErrors((prev) => ({ ...prev, sourceFile: undefined }));
                     }
@@ -881,6 +932,7 @@ export default function AddItemPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     setSelectedDocumentFile(file);
+                    clearDuplicateWarning();
                     if (errors.sourceFile) {
                       setErrors((prev) => ({ ...prev, sourceFile: undefined }));
                     }
@@ -914,6 +966,7 @@ export default function AddItemPage() {
                   onChange={(e) => {
                     const nextText = e.target.value;
                     setSourceText(nextText);
+                    clearDuplicateWarning();
                     if (errors.sourceText) {
                       setErrors((prev) => ({ ...prev, sourceText: undefined }));
                     }
@@ -1390,6 +1443,76 @@ export default function AddItemPage() {
               </div>
             )}
           </div>
+
+          {/* Exact Duplicate Warning */}
+          {duplicateWarning && (
+            <div
+              role="alert"
+              className="p-4 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xl shrink-0 leading-none">⚠️</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                      Exact duplicate found
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-amber-950 dark:text-amber-100 mb-3">
+                    This exact item already exists in Echo Shelf.
+                  </p>
+
+                  {/* Existing Item Card Snippet */}
+                  <div className="p-3.5 rounded-lg border border-amber-200/90 dark:border-amber-800/60 bg-white/90 dark:bg-zinc-900/90 shadow-xs mb-3.5">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1">
+                        {duplicateWarning.title}
+                      </h4>
+                      {duplicateWarning.contentType && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                          {duplicateWarning.contentType}
+                        </span>
+                      )}
+                    </div>
+                    {duplicateWarning.description && (
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-2 leading-relaxed">
+                        {duplicateWarning.description}
+                      </p>
+                    )}
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Saved{" "}
+                      {new Date(duplicateWarning.savedAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <a
+                      href={`/item/${duplicateWarning._id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-750 transition-colors shadow-xs"
+                    >
+                      <span>View Existing Item</span>
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleSaveAnyway}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white transition-colors shadow-xs disabled:opacity-50"
+                    >
+                      {isPending ? "Saving..." : "Save Anyway"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Form Actions */}
           <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">

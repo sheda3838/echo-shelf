@@ -179,6 +179,13 @@ export const savedItemType = defineType({
       type: 'string',
       description: 'Cluster or topic grouping identifier for AI-driven organization',
     }),
+    defineField({
+      name: 'sourceFingerprint',
+      title: 'Source Fingerprint',
+      type: 'string',
+      description: 'Deterministic fingerprint used for exact duplicate detection.',
+      hidden: true,
+    }),
   ],
   preview: {
     select: {

@@ -1,6 +1,7 @@
 "use server";
 
 import { writeClient } from "@/sanity/lib/writeClient";
+import { buildDuplicateFingerprint } from "@/lib/duplicates/fingerprint";
 
 export type ContentType =
   | "article"
@@ -18,6 +19,14 @@ export interface ActionResponse {
   message?: string;
   itemId?: string;
   id?: string;
+  isDuplicate?: boolean;
+  duplicateItem?: {
+    _id: string;
+    title: string;
+    contentType?: string;
+    description?: string;
+    savedAt: string;
+  };
 }
 
 const ALLOWED_CONTENT_TYPES: ContentType[] = [
@@ -134,10 +143,57 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       }
     }
 
+    const allowDuplicate = formData.get("allowDuplicate") === "true";
+
     let imageAssetId: string | null = null;
     let fileAssetId: string | null = null;
+    let fileBuffer: Buffer | null = null;
 
-    // 1. Upload preview image if provided
+    if (sourceFile && sourceFile.size > 0) {
+      fileBuffer = Buffer.from(await sourceFile.arrayBuffer());
+    }
+
+    // 1. Calculate deterministic source fingerprint
+    const sourceFingerprint = buildDuplicateFingerprint({
+      contentType,
+      sourceUrl,
+      sourceText,
+      fileBuffer: fileBuffer || undefined,
+    });
+
+    // 2. Check for exact duplicate unless user explicitly allowed saving a duplicate copy
+    if (!allowDuplicate && sourceFingerprint) {
+      const duplicateQuery = `*[
+        _type == "savedItem" &&
+        sourceFingerprint == $sourceFingerprint &&
+        !(_id in path("drafts.**"))
+      ][0]{
+        _id,
+        title,
+        contentType,
+        description,
+        savedAt
+      }`;
+
+      const existingDuplicate = await writeClient.fetch<{
+        _id: string;
+        title: string;
+        contentType?: string;
+        description?: string;
+        savedAt: string;
+      } | null>(duplicateQuery, { sourceFingerprint });
+
+      if (existingDuplicate && existingDuplicate._id) {
+        return {
+          success: false,
+          isDuplicate: true,
+          duplicateItem: existingDuplicate,
+          message: "This exact item already exists in Echo Shelf.",
+        };
+      }
+    }
+
+    // 3. Upload preview image if provided
     if (previewImage && previewImage.size > 0) {
       const imageBuffer = Buffer.from(await previewImage.arrayBuffer());
       const asset = await writeClient.assets.upload("image", imageBuffer, {
@@ -147,10 +203,8 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       imageAssetId = asset._id;
     }
 
-    // 2. Upload source file if provided
-    if (sourceFile && sourceFile.size > 0) {
-      const fileBuffer = Buffer.from(await sourceFile.arrayBuffer());
-
+    // 4. Upload source file if provided (reusing fileBuffer)
+    if (sourceFile && fileBuffer && fileBuffer.length > 0) {
       if (contentType === "image") {
         // Upload as image asset
         const asset = await writeClient.assets.upload("image", fileBuffer, {
@@ -178,7 +232,7 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       }
     }
 
-    // 3. Assemble document matching savedItem schema
+    // 5. Assemble document matching savedItem schema
     const sourceObj: Record<string, unknown> = {};
     if (sourceUrl) {
       sourceObj.url = sourceUrl;
@@ -203,6 +257,7 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       contentType: ContentType;
       savedAt: string;
       isFavorite: boolean;
+      sourceFingerprint?: string;
       source?: Record<string, unknown>;
       image?: {
         _type: "image";
@@ -220,6 +275,10 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       savedAt: new Date().toISOString(),
       isFavorite: false,
     };
+
+    if (sourceFingerprint) {
+      doc.sourceFingerprint = sourceFingerprint;
+    }
 
     if (Object.keys(sourceObj).length > 0) {
       doc.source = sourceObj;
