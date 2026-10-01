@@ -1666,3 +1666,242 @@ Example structure:
   ]
 }
 
+
+## 2026-10-01 — Contextual Rediscovery
+
+### What I Built
+
+Implemented Echo Shelf's fourth major AI feature: Contextual Rediscovery.
+
+Contextual Rediscovery connects current news and developments with knowledge previously saved in Echo Shelf.
+
+The feature answers:
+
+`What is happening now that makes something I saved before relevant again?`
+
+### Rediscovery Flow
+
+The final flow is:
+
+Knowledge Clusters
+→ Generate compact topic queries
+→ Search recent news through GNews
+→ Normalize and deduplicate articles
+→ Compare news against relevant saved knowledge using Groq
+→ Validate meaningful matches
+→ Persist rediscovery results in Sanity
+→ Display current developments alongside related saved items
+
+### News Provider
+
+Used:
+
+`GNews API`
+
+News retrieval is handled server-side using:
+
+`GNEWS_API_KEY`
+
+Echo Shelf does not send full private notes or uploaded content to the news provider.
+
+Only general topic queries derived from Knowledge Clusters are used.
+
+### Cluster-Based News Search
+
+Knowledge Clusters are used as the primary discovery source.
+
+Cluster metadata such as:
+
+- Title
+- Tags
+- Item count
+
+is converted into compact search queries.
+
+A rediscovery run uses a maximum of 4 cluster-derived searches to keep external API usage controlled.
+
+### Groq Relationship Analysis
+
+Recent news is not displayed automatically just because it matches a keyword.
+
+Echo Shelf uses:
+
+`openai/gpt-oss-120b`
+
+to compare fetched news against saved-item metadata.
+
+Groq determines whether a current article has a genuinely meaningful connection to something already stored in Echo Shelf.
+
+Only strong or moderate matches are retained.
+
+### Why This Matters
+
+Every Rediscovery result includes a dedicated:
+
+`Why this matters to your shelf`
+
+explanation.
+
+The explanation connects:
+
+- the current development
+- the saved item's existing knowledge
+- why revisiting that item may be useful now
+
+This makes Rediscovery different from a normal news feed.
+
+### Rediscovery Result UI
+
+Created:
+
+`/rediscover`
+
+Each result displays:
+
+- Current news headline
+- Publisher
+- Publication time
+- News snippet
+- Article image when available
+- Match strength
+- Connection type
+- Why this matters to your shelf
+- Related saved item
+- Related Knowledge Cluster
+- Read Article link
+- View Saved Item link
+
+External article and saved-item actions open safely in new tabs.
+
+### Persistence
+
+Rediscovery results are stored in Sanity using a dedicated:
+
+`rediscoveryResult`
+
+document type.
+
+Stored data includes:
+
+- Article title
+- Description
+- URL
+- Image URL
+- Publisher
+- Publication date
+- Saved-item reference
+- Cluster reference
+- Relevance
+- Connection type
+- Explanation
+- Discovery timestamp
+
+Full article contents are not stored.
+
+### Refresh Behavior
+
+Rediscovery is fully user-triggered.
+
+Initial action:
+
+`Check What's Relevant Now`
+
+After results exist:
+
+`Check Again`
+
+Opening `/rediscover` does not call GNews or Groq.
+
+Clicking `Check Again` performs a fresh news search and relationship analysis.
+
+After a successful run, the new validated result set replaces the previous persisted rediscovery results.
+
+Because current news changes between runs:
+
+- New results may appear
+- Older results may disappear
+- Result counts may change
+
+This is expected behavior and keeps Rediscovery focused on currently relevant developments.
+
+If a refresh fails, the previous persisted results remain intact.
+
+### Zero-Result Behavior
+
+Echo Shelf does not force current-news relationships.
+
+If no meaningful match exists, the user is shown a clean no-results state instead of unrelated news.
+
+### Validation
+
+External and AI-generated results are validated before persistence.
+
+Validation checks include:
+
+- Article URL exists in fetched news
+- Saved-item ID exists
+- Cluster ID exists
+- Relevance is strong or moderate
+- Explanation is meaningful
+- Duplicate article/item pairs are removed
+- Result count is capped
+
+Hallucinated IDs or unsupported matches are rejected.
+
+### Manual Verification
+
+Contextual Rediscovery was tested against the existing Echo Shelf knowledge base.
+
+The feature successfully:
+
+- Generated searches from Knowledge Clusters
+- Retrieved live recent news
+- Matched relevant stories to saved items
+- Produced "Why this matters" explanations
+- Persisted results in Sanity
+- Reloaded persisted results without another API call
+- Replaced results correctly when Check Again was triggered
+
+Manual testing also confirmed that repeated checks can produce different current stories as the news source and relevance analysis change over time.
+
+### Navigation
+
+The shared Echo Shelf navigation now supports:
+
+- Library
+- Clusters
+- Rediscover
+- + Add Item
+
+### Verification
+
+Quality checks passed:
+
+- `npm run test:rediscovery`
+- `npm run test:connections`
+- `npm run test:clusters`
+- `npx tsc --noEmit`
+- `npm run lint`
+
+### Product Progress
+
+Echo Shelf now has four major AI-powered features:
+
+1. **Smart Capture**
+   - Understands saved content and generates metadata
+
+2. **Smart Connections**
+   - Explains relationships between saved items
+
+3. **Knowledge Clusters**
+   - Groups saved knowledge into broader themes
+
+4. **Contextual Rediscovery**
+   - Connects current developments with previously saved knowledge
+
+The core AI knowledge loop is now complete:
+
+Capture
+→ Connect
+→ Organize
+→ Resurface

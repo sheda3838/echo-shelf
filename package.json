@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed:connections": "tsx scripts/seed-smart-connections.ts",
     "test:connections": "tsx scripts/verify-smart-connections-shortlist.ts && tsx scripts/verify-smart-connections-phase2b.ts",
-    "test:clusters": "tsx scripts/verify-knowledge-clusters.ts"
+    "test:clusters": "tsx scripts/verify-knowledge-clusters.ts",
+    "test:rediscovery": "tsx scripts/verify-rediscovery.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

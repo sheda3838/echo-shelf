@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 
 interface NavBarProps {
-  current?: "library" | "clusters" | "add" | "item";
+  current?: "library" | "clusters" | "rediscover" | "add" | "item";
 }
 
 export default function NavBar({ current }: NavBarProps) {
@@ -38,6 +38,16 @@ export default function NavBar({ current }: NavBarProps) {
             }`}
           >
             Clusters
+          </Link>
+          <Link
+            href="/rediscover"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              current === "rediscover"
+                ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+            }`}
+          >
+            Rediscover
           </Link>
         </nav>
       </div>
