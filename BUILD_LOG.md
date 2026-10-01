@@ -1905,3 +1905,22 @@ Capture
 → Connect
 → Organize
 → Resurface
+
+
+## 2026-10-01 — Smart Capture Description Refinement
+
+Refined Smart Capture description generation across all content types.
+
+AI-generated descriptions now explain what the saved item is rather than producing detailed summaries of everything contained inside it.
+
+Examples:
+- Notes use descriptions such as “A note about…”
+- Articles use “An article about…”
+- Videos use “A video explaining…”
+- Repositories use “A repository for…”
+- Documents use “A report/document covering…”
+- Images use “An infographic/screenshot/image showing…”
+
+Descriptions are kept concise at 1–2 sentences while title and tag generation remain unchanged.
+
+Manual testing with both a Docker networking note and an image confirmed the revised behavior works as expected.
