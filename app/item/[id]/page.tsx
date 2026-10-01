@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
+import SmartConnections, { type ConnectionRecord } from "./smart-connections";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -44,17 +45,7 @@ interface SavedItemDetail {
       };
     };
   };
-  connections?: Array<{
-    strength?: "strong" | "moderate" | "weak";
-    relationshipType?: string;
-    explanation?: string;
-    item?: {
-      _id: string;
-      title: string;
-      contentType?: string;
-      tags?: string[];
-    };
-  }>;
+  connections?: ConnectionRecord[];
 }
 
 const ITEM_QUERY = `*[_type == "savedItem" && _id == $id][0] {
@@ -89,6 +80,7 @@ const ITEM_QUERY = `*[_type == "savedItem" && _id == $id][0] {
     }
   },
   connections[] {
+    _key,
     strength,
     relationshipType,
     explanation,
@@ -400,65 +392,11 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Section: Smart Connections (Placeholder for post-save AI relationships) */}
-          <div className="border-t border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  Smart Connections
-                </h2>
-                {item.connections && item.connections.length > 0 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    {item.connections.length} connection{item.connections.length > 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
-                Phase 2
-              </span>
-            </div>
-
-            {item.connections && item.connections.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {item.connections.map((conn, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                        {conn.item?.title || "Connected Item"}
-                      </span>
-                      {conn.strength && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60">
-                          {conn.strength}
-                        </span>
-                      )}
-                    </div>
-                    {conn.relationshipType && (
-                      <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                        {conn.relationshipType}
-                      </p>
-                    )}
-                    {conn.explanation && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
-                        {conn.explanation}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center space-y-1">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  No connections generated yet.
-                </p>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Smart Connections will analyze and link this item with related knowledge in the next phase.
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Section: Smart Connections */}
+          <SmartConnections
+            itemId={item._id}
+            initialConnections={item.connections || []}
+          />
         </article>
       </div>
     </div>

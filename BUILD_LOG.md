@@ -1484,3 +1484,104 @@ Library
 
 This prepares the application for persistent, AI-generated Smart Connections.
 
+
+## 2026-10-01 — Smart Connections: AI Relationship Analysis & Persistence
+
+### What I Built
+
+Implemented Echo Shelf's second major AI feature: Smart Connections.
+
+Smart Connections compares a saved item against likely related knowledge, uses Groq to verify genuine relationships, explains why they are connected, and persists those relationships back into Sanity.
+
+Unlike Smart Capture, Smart Connections does not run automatically.
+
+Users explicitly trigger it from the saved-item detail page using:
+
+`Generate Connections`
+
+or:
+
+`Refresh Connections`
+
+### Smart Connections Flow
+
+The final flow is:
+
+Saved Item
+→ Generate Connections
+→ Metadata shortlist
+→ Groq relationship analysis
+→ Validate AI response
+→ Persist `connections[]` in Sanity
+→ Refresh item page
+→ Display meaningful connections
+
+The existing metadata shortlist engine is reused so the full knowledge library is never sent to Groq.
+
+Only the top likely candidates are analyzed.
+
+### Candidate Shortlisting
+
+Before calling Groq, Echo Shelf compares the current item's:
+
+- Title
+- Description
+- Tags
+
+against existing saved items.
+
+The shortlist is capped at 5 candidates.
+
+If no meaningful candidate exists:
+
+- Groq is not called
+- No artificial relationship is created
+- The user sees a clean no-connections state
+
+### Groq Relationship Analysis
+
+Smart Connections uses:
+
+`openai/gpt-oss-120b`
+
+through the existing Groq integration.
+
+Groq receives:
+
+- Current saved-item metadata
+- Shortlisted candidate metadata
+
+It decides which candidates are genuinely related and returns structured connection data.
+
+Each relationship contains:
+
+- Connected item ID
+- Strength
+- Relationship type
+- Explanation
+
+Valid strengths are:
+
+- Strong
+- Moderate
+- Weak
+
+Groq is explicitly allowed to reject shortlist false positives.
+
+This is important because metadata heuristics may identify superficial matches that are not useful knowledge relationships.
+
+### Structured AI Output
+
+Expected structure:
+
+```json
+{
+  "connections": [
+    {
+      "itemId": "candidate-id",
+      "strength": "strong",
+      "relationshipType": "complementary",
+      "explanation": "..."
+    }
+  ]
+}
