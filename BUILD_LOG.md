@@ -1585,3 +1585,84 @@ Expected structure:
     }
   ]
 }
+
+## 2026-10-01 — Knowledge Clusters
+
+### What I Built
+
+Implemented Echo Shelf's third major AI feature: Knowledge Clusters.
+
+Knowledge Clusters groups related saved items into broader themes so users can explore their library by topic instead of only by individual items.
+
+The feature is user-triggered and does not regenerate automatically on page load.
+
+### Cluster Generation Flow
+
+The final flow is:
+
+Saved Library
+→ User clicks Generate Clusters / Refresh Clusters
+→ Fetch lightweight saved-item metadata
+→ Send metadata to Groq
+→ Groq identifies meaningful themes
+→ Validate generated clusters
+→ Persist cluster documents in Sanity
+→ Display clusters in `/clusters`
+
+Only lightweight metadata is used:
+
+- Item ID
+- Title
+- Description
+- Tags
+- Content type
+
+Full notes, documents, images, files, and raw source content are not sent for clustering.
+
+### Groq Model
+
+Knowledge Clusters uses:
+
+`openai/gpt-oss-120b`
+
+through the existing server-side Groq integration.
+
+Groq is instructed to:
+
+- group items by actual conceptual relationships
+- avoid superficial keyword-only grouping
+- avoid single-item clusters
+- avoid one giant cluster
+- allow useful many-to-many membership
+- leave unrelated items ungrouped when appropriate
+
+### Structured Cluster Output
+
+Groq returns structured JSON containing:
+
+- Cluster title
+- Cluster summary
+- Saved item IDs
+- Cluster tags
+
+Example structure:
+
+```json
+{
+  "clusters": [
+    {
+      "title": "Containerization & Orchestration",
+      "summary": "Saved knowledge around Docker networking, containers, orchestration, and service discovery.",
+      "itemIds": [
+        "item-id-1",
+        "item-id-2"
+      ],
+      "tags": [
+        "docker",
+        "kubernetes",
+        "containers"
+      ]
+    }
+  ]
+}
+

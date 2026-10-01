@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 import SmartConnections, { type ConnectionRecord } from "./smart-connections";
+import NavBar from "../../components/nav-bar";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -158,23 +159,18 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        {/* Navigation */}
-        <nav className="mb-6 flex items-center justify-between">
+        {/* Global Navigation */}
+        <NavBar current="item" />
+
+        {/* Back Link */}
+        <div className="mb-6 -mt-2">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             <span>←</span> Back to Library
           </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/add"
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
-            >
-              + Add Item
-            </Link>
-          </div>
-        </nav>
+        </div>
 
         {/* Knowledge Item Main Card */}
         <article className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">

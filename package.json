@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed:connections": "tsx scripts/seed-smart-connections.ts",
-    "test:connections": "tsx scripts/verify-smart-connections-shortlist.ts && tsx scripts/verify-smart-connections-phase2b.ts"
+    "test:connections": "tsx scripts/verify-smart-connections-shortlist.ts && tsx scripts/verify-smart-connections-phase2b.ts",
+    "test:clusters": "tsx scripts/verify-knowledge-clusters.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

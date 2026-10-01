@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { urlFor } from "@/sanity/lib/image";
+import NavBar from "./components/nav-bar";
 
 export interface LibraryItem {
   _id: string;
@@ -105,29 +106,13 @@ export default function LibraryView({ items }: { items: LibraryItem[] }) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Echo Shelf Library Header */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-xl">📚</span>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                Echo Shelf
-              </h1>
-            </div>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Your saved knowledge, echoed back when it matters.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/add"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold shadow-xs transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 dark:focus:ring-white"
-            >
-              <span>+ Add Item</span>
-            </Link>
-          </div>
-        </header>
+        {/* Primary Navigation & Title */}
+        <div>
+          <NavBar current="library" />
+          <p className="-mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+            Your saved knowledge, echoed back when it matters.
+          </p>
+        </div>
 
         {/* Search & Filter Controls */}
         <div className="space-y-4">

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import NavBar from "../components/nav-bar";
 import { saveItemAction, type ContentType } from "./actions";
 import { generateSmartCaptureAction } from "./ai-actions";
 import {
@@ -680,24 +681,9 @@ export default function AddItemPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
         {/* Navigation & Header */}
-        <header className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <Link
-              href="/"
-              className="text-xs uppercase tracking-wider font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 transition-colors"
-            >
-              ← Back to Library
-            </Link>
-            <Link
-              href="/studio"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-            >
-              Open Sanity Studio ↗
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <NavBar current="add" />
+        <header className="mb-8 -mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Add to Echo Shelf
           </h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
