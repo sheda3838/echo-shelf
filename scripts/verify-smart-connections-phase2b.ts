@@ -28,6 +28,11 @@ if (!projectId || !dataset) {
   process.exit(1);
 }
 
+import { SEED_USER_SANITY_ID } from "./seed-smart-connections";
+
+process.env.TEST_SUPABASE_USER_ID = "seed-test-user";
+process.env.TEST_USER_NAME = "Echo Shelf Test User";
+
 const client = createClient({
   projectId,
   dataset,
@@ -267,6 +272,10 @@ async function main() {
   console.log("\n🔍 Test D: Testing item with zero candidate overlap (Home Gardening)...");
   const tempGardeningDoc = {
     _type: "savedItem",
+    owner: {
+      _type: "reference",
+      _ref: SEED_USER_SANITY_ID,
+    },
     title: "Beginner Home Gardening Checklist",
     description: "Essential tools, soil preparation, and planting schedules for organic vegetable gardening.",
     tags: ["gardening", "soil", "vegetables", "organic", "plants", "horticulture"],

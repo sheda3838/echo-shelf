@@ -55,7 +55,7 @@ import {
 
 const GROQ_MODEL = "openai/gpt-oss-120b";
 
-const CURRENT_ITEM_QUERY = `*[_type == "savedItem" && _id == $id][0] {
+const CURRENT_ITEM_QUERY = `*[_type == "savedItem" && _id == $id && owner._ref == $ownerId][0] {
   _id,
   title,
   description,
@@ -82,22 +82,25 @@ export async function generateItemConnectionsAction(
   }
 
   try {
-    // 1. Fetch current item metadata
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
+    // 1. Fetch current item metadata scoped to current owner
     const currentItem = await client.withConfig({ useCdn: false }).fetch<CurrentItemDoc | null>(
       CURRENT_ITEM_QUERY,
-      { id: cleanId }
+      { id: cleanId, ownerId: echoUser.id }
     );
 
     if (!currentItem) {
       return {
         success: false,
         status: "error",
-        message: "Saved item not found in Echo Shelf.",
+        message: "Saved item not found in your Echo Shelf.",
       };
     }
 
-    // 2. Shortlist candidates from Sanity using Phase 1 heuristics
-    const pool = await fetchCandidatePool(client.withConfig({ useCdn: false }), cleanId);
+    // 2. Shortlist candidates from Sanity using Phase 1 heuristics scoped to current owner
+    const pool = await fetchCandidatePool(client.withConfig({ useCdn: false }), cleanId, echoUser.id);
     const scoredCandidates = shortlistCandidates(
       {
         title: currentItem.title || "",

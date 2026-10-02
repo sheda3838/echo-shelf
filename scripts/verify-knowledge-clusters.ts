@@ -24,6 +24,11 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+import { SEED_USER_SANITY_ID } from "./seed-smart-connections";
+
+process.env.TEST_SUPABASE_USER_ID = "seed-test-user";
+process.env.TEST_USER_NAME = "Echo Shelf Test User";
+
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
 const token = process.env.SANITY_API_WRITE_TOKEN;
@@ -189,14 +194,14 @@ async function runEndToEndTests() {
       tags?: string[];
       items: Array<{ _ref: string }>;
     }>
-  >(`*[_type == "knowledgeCluster"] | order(generatedAt desc) {
+  >(`*[_type == "knowledgeCluster" && owner._ref == $ownerId] | order(generatedAt desc) {
     _id,
     title,
     slug,
     summary,
     tags,
     items
-  }`);
+  }`, { ownerId: SEED_USER_SANITY_ID });
 
   console.log(`\n  Sanity Persisted Clusters: ${persistedClusters.length}`);
   assert.strictEqual(
@@ -241,7 +246,9 @@ async function runEndToEndTests() {
       _id: string;
       title: string;
     }>
-  >(`*[_type == "knowledgeCluster"] { _id, title }`);
+  >(`*[_type == "knowledgeCluster" && owner._ref == $ownerId] { _id, title }`, {
+    ownerId: SEED_USER_SANITY_ID,
+  });
 
   console.log(`  Clusters count after refresh: ${refreshedClusters.length}`);
   assert.strictEqual(

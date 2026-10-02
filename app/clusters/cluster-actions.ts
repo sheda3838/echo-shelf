@@ -25,7 +25,7 @@ interface SavedItemDoc {
   contentType?: string;
 }
 
-const ALL_SAVED_ITEMS_QUERY = `*[_type == "savedItem" && !(_id in path("drafts.**"))] | order(savedAt desc) {
+const ALL_SAVED_ITEMS_QUERY = `*[_type == "savedItem" && !(_id in path("drafts.**")) && owner._ref == $ownerId] | order(savedAt desc) {
   _id,
   title,
   description,
@@ -33,7 +33,7 @@ const ALL_SAVED_ITEMS_QUERY = `*[_type == "savedItem" && !(_id in path("drafts.*
   contentType
 }`;
 
-const EXISTING_CLUSTERS_QUERY = `*[_type == "knowledgeCluster"]._id`;
+const EXISTING_CLUSTERS_QUERY = `*[_type == "knowledgeCluster" && owner._ref == $ownerId]._id`;
 
 /**
  * Server Action: Knowledge Clusters Generation & Refresh.
@@ -42,10 +42,13 @@ const EXISTING_CLUSTERS_QUERY = `*[_type == "knowledgeCluster"]._id`;
  */
 export async function generateKnowledgeClustersAction(): Promise<GenerateClustersResponse> {
   try {
-    // 1. Fetch lightweight metadata for all non-draft saved items
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
+    // 1. Fetch lightweight metadata for all non-draft saved items owned by current user
     const items = await client
       .withConfig({ useCdn: false })
-      .fetch<SavedItemDoc[]>(ALL_SAVED_ITEMS_QUERY);
+      .fetch<SavedItemDoc[]>(ALL_SAVED_ITEMS_QUERY, { ownerId: echoUser.id });
 
     console.log("[Knowledge Clusters]", {
       stage: "fetch-items",
@@ -176,20 +179,24 @@ ${JSON.stringify(itemsForGroq, null, 2)}`;
     // Failure safety: Old clusters are only removed after new clusters are received and validated.
     const existingClusterIds = await client
       .withConfig({ useCdn: false })
-      .fetch<string[]>(EXISTING_CLUSTERS_QUERY);
+      .fetch<string[]>(EXISTING_CLUSTERS_QUERY, { ownerId: echoUser.id });
 
     const tx = writeClient.transaction();
 
-    // Remove old clusters
+    // Remove old clusters belonging to current user only
     for (const oldId of existingClusterIds) {
       tx.delete(oldId);
     }
 
-    // Create new cluster documents
+    // Create new cluster documents with current user as owner
     const timestamp = new Date().toISOString();
     for (const cluster of validation.clusters) {
       tx.create({
         _type: "knowledgeCluster",
+        owner: {
+          _type: "reference",
+          _ref: echoUser.id,
+        },
         title: cluster.title,
         slug: { _type: "slug", current: cluster.slug },
         summary: cluster.summary,

@@ -8,6 +8,13 @@ export const rediscoveryResultType = defineType({
   icon: SparklesIcon,
   fields: [
     defineField({
+      name: 'owner',
+      title: 'Owner',
+      type: 'reference',
+      to: [{type: 'user'}],
+      validation: (rule) => rule.required().error('An owner reference is required'),
+    }),
+    defineField({
       name: 'articleTitle',
       title: 'Article Title',
       type: 'string',

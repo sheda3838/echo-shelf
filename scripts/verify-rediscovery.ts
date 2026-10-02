@@ -33,6 +33,11 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+import { SEED_USER_SANITY_ID } from "./seed-smart-connections";
+
+process.env.TEST_SUPABASE_USER_ID = "seed-test-user";
+process.env.TEST_USER_NAME = "Echo Shelf Test User";
+
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
 const token = process.env.SANITY_API_WRITE_TOKEN;
@@ -211,7 +216,7 @@ async function runEndToEndTests() {
         savedItem: { _ref: string };
         cluster: { _ref: string };
       }>
-    >(`*[_type == "rediscoveryResult"] | order(publishedAt desc) {
+    >(`*[_type == "rediscoveryResult" && owner._ref == $ownerId] | order(publishedAt desc) {
       _id,
       articleTitle,
       articleUrl,
@@ -221,7 +226,7 @@ async function runEndToEndTests() {
       reason,
       savedItem,
       cluster
-    }`);
+    }`, { ownerId: SEED_USER_SANITY_ID });
 
     console.log(`\n  Sanity Persisted Rediscovery Results: ${persisted.length}`);
     assert.strictEqual(persisted.length, result.matchCount);
@@ -247,7 +252,8 @@ async function runEndToEndTests() {
     assert.strictEqual(result2.success, true);
 
     const refreshed = await client.fetch<Array<{ _id: string }>>(
-      `*[_type == "rediscoveryResult"] { _id }`
+      `*[_type == "rediscoveryResult" && owner._ref == $ownerId] { _id }`,
+      { ownerId: SEED_USER_SANITY_ID }
     );
     console.log(`  Count after Check Again: ${refreshed.length}`);
     assert.strictEqual(refreshed.length, result2.matchCount);

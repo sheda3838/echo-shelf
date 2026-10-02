@@ -37,7 +37,9 @@ interface ClusterDetail {
   items: ClusterItem[];
 }
 
-const CLUSTER_DETAIL_QUERY = `*[_type == "knowledgeCluster" && (_id == $id || slug.current == $id)][0] {
+import { requireEchoUser, getCurrentEchoUser } from "@/lib/auth/echoUser";
+
+const CLUSTER_DETAIL_QUERY = `*[_type == "knowledgeCluster" && (_id == $id || slug.current == $id) && owner._ref == $ownerId][0] {
   _id,
   title,
   "slug": slug.current,
@@ -97,12 +99,12 @@ function getContentTypeBadgeColor(type?: string): string {
   }
 }
 
-async function getCluster(id: string): Promise<ClusterDetail | null> {
+async function getCluster(id: string, ownerId: string): Promise<ClusterDetail | null> {
   if (!id) return null;
   try {
     const cluster = await client
       .withConfig({ useCdn: false })
-      .fetch<ClusterDetail | null>(CLUSTER_DETAIL_QUERY, { id });
+      .fetch<ClusterDetail | null>(CLUSTER_DETAIL_QUERY, { id, ownerId });
     return cluster;
   } catch (err) {
     console.error("[Cluster Detail Fetch Error]", err);
@@ -112,7 +114,8 @@ async function getCluster(id: string): Promise<ClusterDetail | null> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const cluster = await getCluster(id);
+  const echoUser = await getCurrentEchoUser();
+  const cluster = echoUser ? await getCluster(id, echoUser.id) : null;
   if (!cluster) {
     return {
       title: "Cluster Not Found — Echo Shelf",
@@ -126,7 +129,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ClusterDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const cluster = await getCluster(id);
+  const echoUser = await requireEchoUser();
+  const cluster = await getCluster(id, echoUser.id);
 
   if (!cluster) {
     notFound();

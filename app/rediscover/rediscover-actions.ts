@@ -38,7 +38,7 @@ interface ClusterWithItems extends KnowledgeClusterSource {
   items?: SavedItemSummary[];
 }
 
-const CLUSTERS_WITH_ITEMS_QUERY = `*[_type == "knowledgeCluster"] | order(generatedAt desc) {
+const CLUSTERS_WITH_ITEMS_QUERY = `*[_type == "knowledgeCluster" && owner._ref == $ownerId] | order(generatedAt desc) {
   _id,
   title,
   summary,
@@ -54,7 +54,7 @@ const CLUSTERS_WITH_ITEMS_QUERY = `*[_type == "knowledgeCluster"] | order(genera
   }
 }`;
 
-const EXISTING_REDISCOVERY_IDS_QUERY = `*[_type == "rediscoveryResult"]._id`;
+const EXISTING_REDISCOVERY_IDS_QUERY = `*[_type == "rediscoveryResult" && owner._ref == $ownerId]._id`;
 
 /**
  * Server Action: Triggers Contextual Rediscovery run.
@@ -64,10 +64,13 @@ const EXISTING_REDISCOVERY_IDS_QUERY = `*[_type == "rediscoveryResult"]._id`;
  */
 export async function triggerRediscoveryAction(): Promise<RediscoverResponse> {
   try {
-    // 1. Fetch Knowledge Clusters from Sanity
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
+    // 1. Fetch Knowledge Clusters from Sanity belonging to current user
     const clusters = await client
       .withConfig({ useCdn: false })
-      .fetch<ClusterWithItems[]>(CLUSTERS_WITH_ITEMS_QUERY);
+      .fetch<ClusterWithItems[]>(CLUSTERS_WITH_ITEMS_QUERY, { ownerId: echoUser.id });
 
     if (!clusters || clusters.length === 0) {
       return {
@@ -342,10 +345,11 @@ Valid connectionType values: "updates", "extends", "related-development", "new-a
     // Failure safety: Old rediscovery records are deleted ONLY after new results are received & validated.
     const existingIds = await client
       .withConfig({ useCdn: false })
-      .fetch<string[]>(EXISTING_REDISCOVERY_IDS_QUERY);
+      .fetch<string[]>(EXISTING_REDISCOVERY_IDS_QUERY, { ownerId: echoUser.id });
 
     const tx = writeClient.transaction();
 
+    // Delete only previous results belonging to current user
     for (const oldId of existingIds) {
       tx.delete(oldId);
     }
@@ -358,6 +362,10 @@ Valid connectionType values: "updates", "extends", "related-development", "new-a
 
       tx.create({
         _type: "rediscoveryResult",
+        owner: {
+          _type: "reference",
+          _ref: echoUser.id,
+        },
         articleTitle: art.title,
         articleDescription: art.description || "",
         articleUrl: art.url,

@@ -29,6 +29,9 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+process.env.TEST_SUPABASE_USER_ID = "seed-test-user";
+process.env.TEST_USER_NAME = "Echo Shelf Test User";
+
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
 const token = process.env.SANITY_API_WRITE_TOKEN;

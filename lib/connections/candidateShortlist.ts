@@ -330,7 +330,7 @@ export function shortlistCandidates(
  * Lightweight GROQ query to retrieve candidate source documents from Sanity Content Lake.
  * Avoids pulling full source text, uploaded files, or images.
  */
-export const CANDIDATE_POOL_QUERY = `*[_type == "savedItem" && !(_id in path("drafts.**")) && (!defined($excludeId) || _id != $excludeId)]{
+export const CANDIDATE_POOL_QUERY = `*[_type == "savedItem" && !(_id in path("drafts.**")) && (!defined($excludeId) || _id != $excludeId) && (!defined($ownerId) || owner._ref == $ownerId)]{
   _id,
   title,
   description,
@@ -339,14 +339,16 @@ export const CANDIDATE_POOL_QUERY = `*[_type == "savedItem" && !(_id in path("dr
 }`;
 
 /**
- * Server-side function to fetch candidate pool from Sanity
+ * Server-side function to fetch candidate pool from Sanity, scoped by owner if provided
  */
 export async function fetchCandidatePool(
   sanityClient: SanityClient,
-  excludeId?: string
+  excludeId?: string,
+  ownerId?: string
 ): Promise<CandidateDocument[]> {
   const params: Record<string, string | null> = {
     excludeId: excludeId || null,
+    ownerId: ownerId || null,
   };
 
   const results = await sanityClient.fetch<CandidateDocument[]>(

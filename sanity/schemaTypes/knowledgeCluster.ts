@@ -8,6 +8,13 @@ export const knowledgeClusterType = defineType({
   icon: ProjectsIcon,
   fields: [
     defineField({
+      name: 'owner',
+      title: 'Owner',
+      type: 'reference',
+      to: [{type: 'user'}],
+      validation: (rule) => rule.required().error('An owner reference is required'),
+    }),
+    defineField({
       name: 'title',
       title: 'Title',
       type: 'string',

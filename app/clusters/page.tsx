@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import { client } from "@/sanity/lib/client";
+import { requireEchoUser } from "@/lib/auth/echoUser";
 import ClustersView, { type KnowledgeClusterRecord } from "./clusters-view";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const CLUSTERS_QUERY = `*[_type == "knowledgeCluster"] | order(generatedAt desc) {
+const CLUSTERS_QUERY = `*[_type == "knowledgeCluster" && owner._ref == $ownerId] | order(generatedAt desc) {
   _id,
   title,
   "slug": slug.current,
@@ -25,11 +26,11 @@ const CLUSTERS_QUERY = `*[_type == "knowledgeCluster"] | order(generatedAt desc)
   }
 }`;
 
-async function getClusters(): Promise<KnowledgeClusterRecord[]> {
+async function getClusters(ownerId: string): Promise<KnowledgeClusterRecord[]> {
   try {
     const data = await client
       .withConfig({ useCdn: false })
-      .fetch<KnowledgeClusterRecord[]>(CLUSTERS_QUERY);
+      .fetch<KnowledgeClusterRecord[]>(CLUSTERS_QUERY, { ownerId });
     return data || [];
   } catch (err) {
     console.error("[Clusters Fetch Error]", err);
@@ -38,6 +39,7 @@ async function getClusters(): Promise<KnowledgeClusterRecord[]> {
 }
 
 export default async function ClustersPage() {
-  const clusters = await getClusters();
+  const echoUser = await requireEchoUser();
+  const clusters = await getClusters(echoUser.id);
   return <ClustersView initialClusters={clusters} />;
 }

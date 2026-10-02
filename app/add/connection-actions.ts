@@ -51,6 +51,9 @@ export async function lookupConnectionCandidatesAction(input: {
   }
 
   try {
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
     const candidateInput: ConnectionCandidateInput = {
       title,
       description,
@@ -59,7 +62,11 @@ export async function lookupConnectionCandidatesAction(input: {
     };
 
     // Use live Sanity client (useCdn: false) to ensure latest dataset items are visible
-    const pool = await fetchCandidatePool(client.withConfig({ useCdn: false }), candidateInput.excludeId);
+    const pool = await fetchCandidatePool(
+      client.withConfig({ useCdn: false }),
+      candidateInput.excludeId,
+      echoUser.id
+    );
 
     // Reuse the exact deterministic shortlist logic from Phase 1
     const scoredCandidates = shortlistCandidates(candidateInput, pool);

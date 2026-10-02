@@ -49,7 +49,9 @@ interface SavedItemDetail {
   connections?: ConnectionRecord[];
 }
 
-const ITEM_QUERY = `*[_type == "savedItem" && _id == $id][0] {
+import { requireEchoUser, getCurrentEchoUser } from "@/lib/auth/echoUser";
+
+const ITEM_QUERY = `*[_type == "savedItem" && _id == $id && owner._ref == $ownerId][0] {
   _id,
   title,
   description,
@@ -94,12 +96,12 @@ const ITEM_QUERY = `*[_type == "savedItem" && _id == $id][0] {
   }
 }`;
 
-async function getItem(id: string): Promise<SavedItemDetail | null> {
+async function getItem(id: string, ownerId: string): Promise<SavedItemDetail | null> {
   if (!id || typeof id !== "string") return null;
   try {
     const item = await client.withConfig({ useCdn: false }).fetch<SavedItemDetail | null>(
       ITEM_QUERY,
-      { id }
+      { id, ownerId }
     );
     return item;
   } catch (err) {
@@ -110,7 +112,8 @@ async function getItem(id: string): Promise<SavedItemDetail | null> {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const item = await getItem(id);
+  const echoUser = await getCurrentEchoUser();
+  const item = echoUser ? await getItem(id, echoUser.id) : null;
   if (!item) {
     return {
       title: "Item Not Found — Echo Shelf",
@@ -146,7 +149,8 @@ function formatFileSize(bytes?: number): string {
 
 export default async function SavedItemDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const item = await getItem(id);
+  const echoUser = await requireEchoUser();
+  const item = await getItem(id, echoUser.id);
 
   if (!item) {
     notFound();

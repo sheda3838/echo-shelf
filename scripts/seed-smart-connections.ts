@@ -41,9 +41,18 @@ const client = createClient({
   useCdn: false,
 });
 
+import { getSanityUserId } from "../lib/auth/echoUser";
+
+export const SEED_USER_SUPABASE_ID = "seed-test-user";
+export const SEED_USER_SANITY_ID = getSanityUserId(SEED_USER_SUPABASE_ID);
+
 export interface SeedItem {
   _id: string;
   _type: "savedItem";
+  owner?: {
+    _type: "reference";
+    _ref: string;
+  };
   title: string;
   description: string;
   contentType: "note";
@@ -239,14 +248,28 @@ export const SEED_ITEMS: SeedItem[] = [
 
 async function seedSmartConnections() {
   console.log(`Connecting to Sanity project: ${projectId} (dataset: ${dataset})...`);
-  console.log(`Seeding ${SEED_ITEMS.length} Smart Connections test items with deterministic IDs...\n`);
+  console.log(`Seeding test user: ${SEED_USER_SANITY_ID}...`);
+  await client.createIfNotExists({
+    _id: SEED_USER_SANITY_ID,
+    _type: "user",
+    displayName: "Echo Shelf Test User",
+    createdAt: new Date().toISOString(),
+  });
+
+  console.log(`Seeding ${SEED_ITEMS.length} Smart Connections test items with deterministic IDs and owner...\n`);
 
   let successCount = 0;
 
   for (const item of SEED_ITEMS) {
     try {
-      // createOrReplace ensures duplicate-safe, idempotent execution
-      await client.createOrReplace(item);
+      // createOrReplace ensures duplicate-safe, idempotent execution with owner
+      await client.createOrReplace({
+        ...item,
+        owner: {
+          _type: "reference",
+          _ref: SEED_USER_SANITY_ID,
+        },
+      });
       successCount++;
       console.log(`  ✓ [${item.contentType}] ${item.title}`);
       console.log(`    ID: ${item._id}`);

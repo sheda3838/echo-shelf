@@ -159,17 +159,30 @@ async function runDuplicateTests() {
   console.log("🚀 Testing Pre-Save Duplicate Check & Save Anyway against Sanity");
   console.log("===============================================================");
 
-  // 7. Sanity Duplicate Query against backfilled existing item
+  process.env.TEST_SUPABASE_USER_ID = "test-duplicate-verification-user";
+  process.env.TEST_USER_NAME = "Duplicate Tester";
+
+  // 7. Sanity Duplicate Query against user's saved item
   console.log("\n[Test 7] Check Duplicate Action against Existing Note:");
-  const existingNoteText = "Docker provides several network drivers including bridge, host, overlay, and macvlan. The default bridge network is created automatically on the Docker host. Containers connected to the same bridge network can communicate via IP addresses, while custom user-defined bridges provide automatic DNS resolution between container names. Isolation is enforced through iptables rules and Linux network namespaces.";
-  // Check if our backfilled item exists with this text
+  const existingNoteText = "Docker provides several network drivers including bridge, host, overlay, and macvlan.";
+  
+  // Save seed item first
+  const seedForm = new FormData();
+  seedForm.append("contentType", "note");
+  seedForm.append("title", "Docker Networking Basics");
+  seedForm.append("description", "A note about Docker networking.");
+  seedForm.append("sourceText", existingNoteText);
+  const seedRes = await saveItemAction(seedForm);
+  assert.strictEqual(seedRes.success, true, "Seed note must be saved successfully");
+
+  // Check if our saved item is detected as duplicate
   const checkRes = await checkDuplicateAction({
     contentType: "note",
     sourceText: existingNoteText,
   });
 
   console.log("  Check Duplicate Result:", checkRes);
-  assert.strictEqual(checkRes.duplicate, true, "Existing backfilled item must be detected as duplicate");
+  assert.strictEqual(checkRes.duplicate, true, "Existing item must be detected as duplicate");
   assert.ok(checkRes.item, "Duplicate item metadata must be returned");
   console.log(`  ✓ Successfully detected duplicate item: "${checkRes.item?.title}" (${checkRes.item?._id})`);
 
@@ -239,8 +252,9 @@ async function runDuplicateTests() {
   );
   console.log(`  ✓ Both items share fingerprint: ${doc1?.sourceFingerprint}`);
 
-  // Clean up the 2 test documents created for this test
+  // Clean up the test documents created for this test
   console.log("\n  Cleaning up test items...");
+  if (seedRes.itemId) await writeClient.delete(seedRes.itemId);
   await writeClient.delete(createdId1 as string);
   await writeClient.delete(createdId2 as string);
   console.log("  ✓ Test items cleaned up.");

@@ -8,9 +8,11 @@ export const metadata: Metadata = {
   description: "See when today's developments connect with knowledge you've saved before.",
 };
 
+import { requireEchoUser } from "@/lib/auth/echoUser";
+
 export const dynamic = "force-dynamic";
 
-const REDISCOVERY_QUERY = `*[_type == "rediscoveryResult"] | order(publishedAt desc) {
+const REDISCOVERY_QUERY = `*[_type == "rediscoveryResult" && owner._ref == $ownerId] | order(publishedAt desc) {
   _id,
   articleTitle,
   articleDescription,
@@ -35,9 +37,9 @@ const REDISCOVERY_QUERY = `*[_type == "rediscoveryResult"] | order(publishedAt d
   }
 }`;
 
-const CLUSTER_COUNT_QUERY = `count(*[_type == "knowledgeCluster"])`;
+const CLUSTER_COUNT_QUERY = `count(*[_type == "knowledgeCluster" && owner._ref == $ownerId])`;
 
-async function getRediscoveryData(): Promise<{
+async function getRediscoveryData(ownerId: string): Promise<{
   results: RediscoveryCardData[];
   clusterCount: number;
 }> {
@@ -45,10 +47,10 @@ async function getRediscoveryData(): Promise<{
     const [results, clusterCount] = await Promise.all([
       client
         .withConfig({ useCdn: false })
-        .fetch<RediscoveryCardData[]>(REDISCOVERY_QUERY),
+        .fetch<RediscoveryCardData[]>(REDISCOVERY_QUERY, { ownerId }),
       client
         .withConfig({ useCdn: false })
-        .fetch<number>(CLUSTER_COUNT_QUERY),
+        .fetch<number>(CLUSTER_COUNT_QUERY, { ownerId }),
     ]);
 
     return {
@@ -65,7 +67,8 @@ async function getRediscoveryData(): Promise<{
 }
 
 export default async function RediscoverPage() {
-  const { results, clusterCount } = await getRediscoveryData();
+  const echoUser = await requireEchoUser();
+  const { results, clusterCount } = await getRediscoveryData(echoUser.id);
   return (
     <RediscoverView
       initialResults={results}

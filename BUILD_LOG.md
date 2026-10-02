@@ -2131,3 +2131,29 @@ URL / text / file source
 → Warn before save
 
 Semantic or near-duplicate detection remains outside the current scope.
+
+
+## Auth + User Ownership & Isolation
+
+- Added Supabase authentication with:
+  - Email/password
+  - Google OAuth
+  - GitHub OAuth
+- Implemented SSR cookie-based sessions using `@supabase/ssr`.
+- Added protected routes, auth callbacks, session refresh, logout, and authenticated navigation state.
+- Fixed email confirmation callback handling for Supabase PKCE flows:
+  - successful same-browser confirmation redirects into the app
+  - missing PKCE verifier falls back cleanly to verified-login state
+  - expired/reused confirmation links show the expected expired/invalid message
+  - Google/GitHub OAuth callback flow remains intact
+- Wiped all legacy unauthenticated Sanity test content.
+- Added a Sanity `user` schema with privacy-safe ownership mapping.
+- Added required `owner` references to `savedItem`, `knowledgeCluster`, and `rediscoveryResult`.
+- Scoped Library, item detail, duplicate detection, Potentially Related, Smart Connections, Knowledge Clusters, and Contextual Rediscovery to the authenticated user.
+- Verified cross-user isolation:
+  - users only see their own data
+  - cross-user item URLs are blocked
+  - duplicate detection is per-user
+  - cluster and rediscovery refreshes do not affect other users
+- Authentication, isolation, duplicate, connection, cluster, and rediscovery tests all passed.
+- TypeScript and ESLint checks passed.

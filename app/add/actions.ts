@@ -161,11 +161,15 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       fileBuffer: fileBuffer || undefined,
     });
 
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
     // 2. Check for exact duplicate unless user explicitly allowed saving a duplicate copy
     if (!allowDuplicate && sourceFingerprint) {
       const duplicateQuery = `*[
         _type == "savedItem" &&
         sourceFingerprint == $sourceFingerprint &&
+        owner._ref == $ownerId &&
         !(_id in path("drafts.**"))
       ][0]{
         _id,
@@ -181,7 +185,7 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
         contentType?: string;
         description?: string;
         savedAt: string;
-      } | null>(duplicateQuery, { sourceFingerprint });
+      } | null>(duplicateQuery, { sourceFingerprint, ownerId: echoUser.id });
 
       if (existingDuplicate && existingDuplicate._id) {
         return {
@@ -252,6 +256,10 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
 
     const doc: {
       _type: "savedItem";
+      owner: {
+        _type: "reference";
+        _ref: string;
+      };
       title: string;
       description: string;
       contentType: ContentType;
@@ -269,6 +277,10 @@ export async function saveItemAction(formData: FormData): Promise<ActionResponse
       tags?: string[];
     } = {
       _type: "savedItem",
+      owner: {
+        _type: "reference",
+        _ref: echoUser.id,
+      },
       title,
       description,
       contentType,

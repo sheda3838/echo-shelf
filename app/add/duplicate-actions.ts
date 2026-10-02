@@ -81,10 +81,14 @@ export async function checkDuplicateAction(
       return { duplicate: false };
     }
 
-    // Query Sanity for any existing savedItem with the exact fingerprint
+    const { requireEchoUser } = await import("@/lib/auth/echoUser");
+    const echoUser = await requireEchoUser();
+
+    // Query Sanity for any existing savedItem with the exact fingerprint owned by current user
     const query = `*[
       _type == "savedItem" &&
       sourceFingerprint == $fingerprint &&
+      owner._ref == $ownerId &&
       !(_id in path("drafts.**"))
     ][0]{
       _id,
@@ -101,7 +105,7 @@ export async function checkDuplicateAction(
       contentType?: string;
       description?: string;
       savedAt: string;
-    } | null>(query, { fingerprint });
+    } | null>(query, { fingerprint, ownerId: echoUser.id });
 
     if (existing && existing._id) {
       return {
