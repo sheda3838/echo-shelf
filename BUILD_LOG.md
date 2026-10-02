@@ -2157,3 +2157,18 @@ Semantic or near-duplicate detection remains outside the current scope.
   - cluster and rediscovery refreshes do not affect other users
 - Authentication, isolation, duplicate, connection, cluster, and rediscovery tests all passed.
 - TypeScript and ESLint checks passed.
+
+
+## Cluster Navigation & Note Content UI Refinement
+
+- Updated cluster detail item cards so saved items open in a new browser tab.
+- Kept the cluster page open in the original tab for easier browsing through multiple items.
+- Scoped this behavior only to `/clusters/[id]`; standard Library navigation remains unchanged.
+- Increased the visible size of the Note Content box in saved-item Source Information.
+- Added responsive minimum heights for better readability:
+  - mobile: 180px
+  - small screens and above: 240px
+- Improved long-note wrapping with `whitespace-pre-wrap` and `break-words`.
+- Increased responsive padding while preserving the existing read-only styling.
+- TypeScript check passed with 0 errors.
+- ESLint passed with 0 warnings/errors.

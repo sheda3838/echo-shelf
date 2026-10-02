@@ -215,6 +215,8 @@ export default async function ClusterDetailPage({ params }: PageProps) {
                   <Link
                     key={item._id}
                     href={`/item/${item._id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="group bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-5 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm transition-all flex flex-col justify-between"
                   >
                     <div>

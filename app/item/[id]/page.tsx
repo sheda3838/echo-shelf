@@ -229,7 +229,7 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
 
             {/* Note Content */}
             {item.contentType === "note" && (
-              <div className="bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 sm:p-5 text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap font-sans">
+              <div className="bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 sm:p-6 text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap break-words font-sans min-h-[180px] sm:min-h-[240px]">
                 {item.source?.text || "No note body recorded."}
               </div>
             )}
