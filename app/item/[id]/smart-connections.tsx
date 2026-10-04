@@ -12,6 +12,7 @@ import {
   WarningIcon,
   getContentTypeBadgeColor,
 } from "@/app/components/icons";
+import EchoPulseLoader from "@/app/components/echo-pulse-loader";
 
 export interface ConnectedItem {
   _id: string;
@@ -162,36 +163,15 @@ export default function SmartConnections({
             type="button"
             onClick={handleGenerateOrRefresh}
             disabled={isPending}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
+            aria-busy={isPending}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               isPending
-                ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 cursor-not-allowed"
+                ? "bg-emerald-800 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
             }`}
           >
             {isPending ? (
-              <>
-                <svg
-                  className="animate-spin h-3.5 w-3.5 text-white/80"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>Finding meaningful connections...</span>
-              </>
+              <EchoPulseLoader mode="inline" text="Generating connections..." className="text-emerald-100" />
             ) : hasConnections ? (
               <>
                 <SparklesIcon className="w-3.5 h-3.5" />

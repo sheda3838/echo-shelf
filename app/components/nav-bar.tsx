@@ -13,6 +13,7 @@ import {
   PlusIcon,
   LogoutIcon,
 } from "./icons";
+import EchoPulseLoader from "./echo-pulse-loader";
 
 interface NavBarProps {
   current?: "library" | "clusters" | "rediscover" | "add" | "item";
@@ -49,6 +50,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
   }, [initialUser]);
 
   async function handleSignOut() {
+    if (isSigningOut) return;
     setIsSigningOut(true);
     try {
       const supabase = createClient();
@@ -71,7 +73,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
       <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
         <Link
           href="/"
-          className="group flex items-center gap-2.5 text-zinc-900 dark:text-white font-bold text-base sm:text-lg hover:opacity-95 transition-opacity"
+          className="group flex items-center gap-2.5 text-zinc-900 dark:text-white font-bold text-base sm:text-lg hover:opacity-95 active:scale-[0.98] transition-all"
         >
           <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-emerald-500/20 dark:border-emerald-400/30 shadow-xs group-hover:border-emerald-500/50 transition-colors">
             <Image
@@ -94,7 +96,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
         <nav className="flex items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
           <Link
             href="/"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-[0.97] transition-all ${
               current === "library"
                 ? "bg-emerald-100/70 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300/80 dark:border-emerald-700/60 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-emerald-900 dark:hover:text-emerald-200 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40"
@@ -105,7 +107,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
           </Link>
           <Link
             href="/clusters"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-[0.97] transition-all ${
               current === "clusters"
                 ? "bg-emerald-100/70 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300/80 dark:border-emerald-700/60 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-emerald-900 dark:hover:text-emerald-200 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40"
@@ -116,7 +118,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
           </Link>
           <Link
             href="/rediscover"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold active:scale-[0.97] transition-all ${
               current === "rediscover"
                 ? "bg-emerald-100/70 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300/80 dark:border-emerald-700/60 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-emerald-900 dark:hover:text-emerald-200 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40"
@@ -131,7 +133,7 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
       <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
         <Link
           href="/add"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 active:scale-[0.97] text-white text-xs font-semibold shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         >
           <PlusIcon className="w-3.5 h-3.5" />
           <span>Add Item</span>
@@ -154,10 +156,17 @@ export default function NavBar({ current, initialUser }: NavBarProps) {
               type="button"
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-emerald-800 dark:text-zinc-400 dark:hover:text-emerald-300 px-2 py-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50"
+              aria-busy={isSigningOut}
+              className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-emerald-800 dark:text-zinc-400 dark:hover:text-emerald-300 px-2 py-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <LogoutIcon className="w-3 h-3 opacity-70" />
-              <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
+              {isSigningOut ? (
+                <EchoPulseLoader mode="inline" text="Signing out..." size="sm" className="text-zinc-500 dark:text-zinc-400" />
+              ) : (
+                <>
+                  <LogoutIcon className="w-3 h-3 opacity-70" />
+                  <span>Sign Out</span>
+                </>
+              )}
             </button>
           </div>
         )}

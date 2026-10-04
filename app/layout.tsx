@@ -16,12 +16,9 @@ export const metadata: Metadata = {
   title: "Echo Shelf — Intelligent Knowledge Lake",
   description: "Organize, connect, and rediscover your saved articles, notes, code, and videos with intelligent resonance.",
   icons: {
-    icon: [
-      { url: "/logo.png", type: "image/png" },
-      { url: "/favicon.png", type: "image/png" },
-    ],
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 

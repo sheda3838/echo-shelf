@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { WarningIcon, CheckIcon, EyeIcon, EyeOffIcon } from "@/app/components/icons";
+import EchoPulseLoader from "@/app/components/echo-pulse-loader";
 
 function LoginForm() {
   const router = useRouter();
@@ -30,6 +31,7 @@ function LoginForm() {
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isLoading || isOAuthLoading !== null) return;
     setErrorMessage(null);
 
     const trimmedEmail = email.trim();
@@ -75,6 +77,7 @@ function LoginForm() {
   }
 
   async function handleOAuth(provider: "google" | "github") {
+    if (isLoading || isOAuthLoading !== null) return;
     setErrorMessage(null);
     setIsOAuthLoading(provider);
 
@@ -180,16 +183,11 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || isOAuthLoading !== null}
+          aria-busy={isLoading}
           className="w-full mt-2 py-2.5 px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading ? (
-            <>
-              <svg className="animate-spin h-4 w-4 text-emerald-100" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>Signing In...</span>
-            </>
+            <EchoPulseLoader mode="inline" text="Signing in..." className="text-white" />
           ) : (
             <span>Sign In</span>
           )}
@@ -214,10 +212,11 @@ function LoginForm() {
           type="button"
           onClick={() => handleOAuth("google")}
           disabled={isLoading || isOAuthLoading !== null}
-          className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
+          aria-busy={isOAuthLoading === "google"}
+          className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isOAuthLoading === "google" ? (
-            <span className="text-xs text-zinc-500">Connecting to Google...</span>
+            <EchoPulseLoader mode="inline" text="Connecting to Google..." className="text-zinc-600 dark:text-zinc-400 text-xs" />
           ) : (
             <>
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -235,10 +234,11 @@ function LoginForm() {
           type="button"
           onClick={() => handleOAuth("github")}
           disabled={isLoading || isOAuthLoading !== null}
-          className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
+          aria-busy={isOAuthLoading === "github"}
+          className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isOAuthLoading === "github" ? (
-            <span className="text-xs text-zinc-500">Connecting to GitHub...</span>
+            <EchoPulseLoader mode="inline" text="Connecting to GitHub..." className="text-zinc-600 dark:text-zinc-400 text-xs" />
           ) : (
             <>
               <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24">

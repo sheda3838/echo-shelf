@@ -207,7 +207,7 @@ export default async function ClusterDetailPage({ params }: PageProps) {
                     href={`/item/${item._id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group echo-card-hover bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl overflow-hidden shadow-xs hover:border-emerald-500/40 flex flex-col justify-between"
+                    className="group echo-card-hover bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl overflow-hidden shadow-xs hover:border-emerald-500/40 active:scale-[0.99] transition-all flex flex-col justify-between"
                   >
                     <div>
                       {/* Fixed Aspect Ratio Media Area: Standardized 16/9 across ALL cards */}

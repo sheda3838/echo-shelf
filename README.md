@@ -249,8 +249,8 @@ Privacy-safe application identity projection (Supabase remains the sole source o
 | `NEXT_PUBLIC_SUPABASE_URL` | **Yes** | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | **Yes** | Your Supabase Project Publishable / Anon key |
 | `NEXT_PUBLIC_SANITY_API_VERSION` | No | Sanity API version (defaults to `2026-09-27`) |
-| `YOUTUBE_API_KEY` | No | Google/YouTube Data API v3 key for enhanced video extraction |
-| `GNEWS_API_KEY` | No | GNews API key for live news search in Contextual Rediscovery |
+| `YOUTUBE_API_KEY` | **Yes** | Google/YouTube Data API v3 key for enhanced video extraction |
+| `GNEWS_API_KEY` | **Yes** | GNews API key for live news search in Contextual Rediscovery |
 | `GITHUB_TOKEN` | No | GitHub personal access token for higher repository API rate limits |
 | `GITLAB_TOKEN` | No | GitLab access token for private or higher-rate repository queries |
 

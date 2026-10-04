@@ -22,6 +22,7 @@ import {
   ConnectionIcon,
   ExternalLinkIcon,
 } from "../components/icons";
+import EchoPulseLoader from "../components/echo-pulse-loader";
 
 interface FormErrors {
   contentType?: string;
@@ -130,6 +131,8 @@ export default function AddItemPage() {
       setCandidateFeedback("Please enter a title or description first to find related items.");
       return;
     }
+
+    if (isShortlisting) return;
 
     const thisRequestId = ++activeCandidateRequestIdRef.current;
     setIsShortlisting(true);
@@ -278,6 +281,7 @@ export default function AddItemPage() {
 
   // AI Smart Capture trigger handler
   async function handleGenerateWithAi() {
+    if (isAiGenerating || !isAiAvailable) return;
     const thisRequestId = ++activeAiRequestIdRef.current;
     const snapshotUrl = sourceUrl.trim();
     const snapshotContentType = contentType;
@@ -593,10 +597,12 @@ export default function AddItemPage() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isPending) return;
     executeSave(false);
   }
 
   function handleSaveAnyway() {
+    if (isPending) return;
     setAllowDuplicate(true);
     executeSave(true);
   }
@@ -1122,24 +1128,10 @@ export default function AddItemPage() {
                       : "Suggest title, description, and tags with Groq AI"
                   }
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white shadow-xs hover:shadow-emerald-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 whitespace-nowrap"
+                  aria-busy={isAiGenerating}
                 >
                   {isAiGenerating ? (
-                    <>
-                      <svg
-                        className="animate-spin h-3.5 w-3.5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span>Generating...</span>
-                    </>
+                    <EchoPulseLoader mode="inline" text="Generating suggestions..." className="text-white" />
                   ) : (
                     <>
                       <SparklesIcon className="w-3.5 h-3.5" />
@@ -1362,24 +1354,10 @@ export default function AddItemPage() {
                       : "Search existing library for related items"
                   }
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 whitespace-nowrap"
+                  aria-busy={isShortlisting}
                 >
                   {isShortlisting ? (
-                    <>
-                      <svg
-                        className="animate-spin h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span>Looking for related items...</span>
-                    </>
+                    <EchoPulseLoader mode="inline" text="Finding related items..." className="text-emerald-700 dark:text-emerald-300" />
                   ) : (
                     <>
                       <ConnectionIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
@@ -1537,9 +1515,14 @@ export default function AddItemPage() {
                       type="button"
                       onClick={handleSaveAnyway}
                       disabled={isPending}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white transition-colors shadow-xs disabled:opacity-50"
+                      aria-busy={isPending}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isPending ? "Saving..." : "Save Anyway"}
+                      {isPending ? (
+                        <EchoPulseLoader mode="inline" text="Saving..." className="text-white" />
+                      ) : (
+                        <span>Save Anyway</span>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1560,32 +1543,11 @@ export default function AddItemPage() {
             <button
               type="submit"
               disabled={isPending || isAiGenerating}
+              aria-busy={isPending}
               className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-semibold text-sm shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isPending ? (
-                <>
-                  <svg
-                    className="animate-spin h-4 w-4 text-emerald-100"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span>Saving...</span>
-                </>
+                <EchoPulseLoader mode="inline" text="Saving to shelf..." className="text-white" />
               ) : (
                 <span>Save to Echo Shelf</span>
               )}
