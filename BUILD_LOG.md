@@ -2196,3 +2196,36 @@ Semantic or near-duplicate detection remains outside the current scope.
 - Successful diagnostic runs consistently produced six meaningful clusters with no invalid references or JSON validation failures.
 - Subsequent diagnostic requests were blocked only by the Groq organization's daily token quota, confirming the original clustering reliability issue was resolved.
 - TypeScript, ESLint, and the production build all passed after the fix.
+
+## 2026-10-04 — Loading States & Interaction Feedback
+
+- Added consistent branded loading feedback across authentication, navigation, and asynchronous application actions.
+- Added pending states to authentication controls to prevent accidental duplicate sign-in/sign-up submissions.
+- Added route-level loading feedback for server-rendered navigation where destination data may take time to resolve.
+- Reused the Echo Shelf emerald/mint visual language for inline and page-level loading indicators.
+- Added disabled and accessible pending states for long-running AI actions where appropriate.
+- Updated favicon handling to consistently use the Echo Shelf branding.
+- TypeScript, ESLint, and the production build passed after the refinement.
+
+
+## 2026-10-04 — Production Smart Capture Runtime Fix
+
+- Discovered a production-only Smart Capture failure after deploying Echo Shelf to Vercel.
+- Vercel logs traced the failure to an ESM/CommonJS incompatibility in the deployed `jsdom` dependency chain rather than the Smart Capture extraction logic itself.
+- The failure occurred before the target webpage was fetched and caused article/url Smart Capture requests to fail at runtime.
+- Resolved the issue by pinning `jsdom` to a runtime-compatible version while preserving the existing Mozilla Readability extraction pipeline.
+- Revalidated TypeScript, ESLint, and the production build after the dependency adjustment.
+
+
+## 2026-10-04 — Production Deployment & Challenge Demo Preparation
+
+- Deployed Echo Shelf to Vercel at:
+  `https://echo-shelf-three.vercel.app/`
+- Configured the production environment for Sanity, Supabase Auth, Groq, YouTube metadata extraction, and GNews-powered Rediscovery.
+- Prepared a dedicated challenge demo account with a pre-populated multi-domain knowledge library.
+- Added representative articles, videos, repositories, URLs, images, documents, notes, and miscellaneous resources through the real Echo Shelf application.
+- Generated production Knowledge Clusters from the demonstration library.
+- Verified the deployed Library, Smart Capture, Smart Connections, Knowledge Clusters, authentication, and navigation flows.
+- Added final application screenshots and production/demo information to the project README.
+
+

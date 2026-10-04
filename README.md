@@ -1,6 +1,38 @@
-# Echo Shelf
+<p align="center">
+  <img src="public/logo.png" alt="Echo Shelf Logo" width="128" />
+</p>
 
-Your saved knowledge, echoed back when it matters.
+<h1 align="center">Echo Shelf</h1>
+
+<p align="center">
+  <strong>Your saved knowledge, echoed back when it matters.</strong>
+</p>
+
+---
+
+## Live Demo
+
+- **Live Application**: [https://echo-shelf-three.vercel.app/](https://echo-shelf-three.vercel.app/)
+- **Source Code**: [https://github.com/sheda3838/echo-shelf](https://github.com/sheda3838/echo-shelf)
+
+### Demo Account
+
+A pre-populated demonstration account is available for challenge testing and evaluation:
+
+- **Email**: `echoshelf@gmail.com`
+- **Password**: `password`
+
+> **Note**: This account is pre-populated with realistic demonstration knowledge across multiple domains (DevOps & containers, web development, AI & RAG, ergonomics & workplace wellness, deep work & productivity) to enable full exploration of Smart Connections, Knowledge Clusters, and Contextual Rediscovery out of the box.
+
+#### Recommended Testing Walkthrough:
+1. **Sign in** using the demo credentials above at [`/auth/login`](https://echo-shelf-three.vercel.app/auth/login).
+2. **Browse the mixed-content Library** to explore articles, YouTube videos, GitHub repositories, PDFs, notes, and diagrams with full-text search and tag filtering.
+3. **Open saved items** and inspect **Smart Connections** with typed relationship reasoning, strength ratings, and connection explanations.
+4. **Open Knowledge Clusters** ([`/clusters`](https://echo-shelf-three.vercel.app/clusters)) to inspect AI-generated emergent themes.
+5. **Open Rediscover** ([`/rediscover`](https://echo-shelf-three.vercel.app/rediscover)) to inspect current live news matched against saved knowledge.
+6. **Use Add Item** ([`/add`](https://echo-shelf-three.vercel.app/add)) if you want to test **Smart Capture** with any URL, video, repository, document, screenshot, or note.
+
+---
 
 ## What is Echo Shelf?
 
@@ -175,7 +207,7 @@ Connections between live news and saved knowledge:
 
 ### 4. `user`
 Privacy-safe application identity projection (Supabase remains the sole source of truth for email and authentication; Sanity stores no email or raw Supabase user ID):
-- `_id` (string): Deterministic opaque Sanity user document ID derived server-side from authenticated Supabase user ID (`echoUser_${hash}`).
+- `_id` (string): Deterministic opaque Sanity user document ID derived server-side from authenticated Supabase user ID (`user.<sha256>`).
 - `displayName` (string): User display name.
 - `avatarUrl` (url): Optional profile picture URL.
 - `createdAt` (datetime): Account creation timestamp.
@@ -311,7 +343,7 @@ The build log documents:
 - Real-world extraction challenges across diverse content formats.
 - **The Image Capture Pivot**: An early OCR-only parser proved fragile when encountering diagrams, handwritten notes, and mixed media. The system was overhauled to use hosted vision models via Groq (`qwen/qwen3.8-27b`), dramatically improving accuracy.
 - Two-stage connection filtering designed to balance LLM token costs with semantic relationship depth.
-- Multi-tenant data isolation testing and boundary validation.
+- Per-user data isolation testing and boundary validation.
 
 For the full, unvarnished build narrative, refer to [BUILD_LOG.md](BUILD_LOG.md).
 
@@ -321,30 +353,63 @@ For the full, unvarnished build narrative, refer to [BUILD_LOG.md](BUILD_LOG.md)
 
 Echo Shelf was built for the **DEV Community Sanity Challenge**:
 - **Track**: Path Two — *Vibe-Code Something Strange*
+- **Sanity Project ID**: `jcon1mtg`
+- **Dataset**: `production`
 
-The project highlights the flexibility of the Sanity Content Lake:
-- Modeling interconnected, relational personal knowledge.
-- Going far beyond basic CMS blogging to power an active AI-assisted workspace.
-- Executing document references, structured relationship graphs, user-triggered clustering, and contextual rediscovery.
-- Operating an embedded Sanity Studio alongside a custom Next.js 16 interface.
-
-**Live Demo**: [add after deployment]
+The project highlights the flexibility of the **Sanity Content Lake** as an intelligent personal knowledge lake rather than a traditional blog CMS:
+- **Core Structured Content Lake Models**:
+  - `savedItem`: Relational knowledge assets storing normalized titles, descriptions, multi-format source objects (URLs, text, uploaded file assets), image assets, tags, canonical fingerprints for duplicate prevention, and graph connection reference arrays.
+  - `knowledgeCluster`: Dynamic thematic clusters storing titles, unique slugs, AI-synthesized summaries, topic tags, and reference arrays linking constituent `savedItem` records.
+  - `rediscoveryResult`: Synthesized connections between live news headlines and saved shelf knowledge, storing article metadata, relevance levels, and references to both `savedItem` and `knowledgeCluster` documents.
+  - `user`: Privacy-safe user identity projection derived deterministically server-side from authenticated Supabase user IDs (`user.<sha256>`), ensuring strict multi-tenant data isolation without storing raw emails or auth secrets in Sanity.
+- **Deep GROQ Querying**: Expressive GROQ queries power candidate shortlisting, tag filtering, full-text searches, cluster item expansion, and tenant-isolated data retrieval.
+- **Embedded Sanity Studio**: Full Sanity Studio v5 embedded directly at `/studio` within the Next.js application for transparent content inspection and schema management.
+- **Custom Application Interface**: Fully custom Next.js 16 web application powered by `@sanity/client` and React Server Actions.
 
 ---
 
 ## Screenshots
 
-Screenshots will be added after production deployment.
+### 1. Library & Personal Knowledge Lake
+*Unified library with 16:9 media previews, content-type badges, full-text search, and tag filtering.*
+
+![Library View](images/home.png)
+
+### 2. Smart Capture & Ingestion
+*Multi-source ingestion interface supporting URLs, repositories, YouTube videos, document uploads, vision-based image analysis, and notes.*
+
+![Smart Capture](images/addItem.png)
+
+### 3. Knowledge Clusters
+*Thematic knowledge clusters synthesized across saved items with member counts, topic tags, and relational summaries.*
+
+![Knowledge Clusters](images/clusters.png)
+
+### 4. Contextual Rediscovery
+*Live news feeds matched against saved library themes to explain why breaking events matter to existing knowledge.*
+
+![Contextual Rediscovery](images/rediscovery.png)
+
+### 5. Multi-Provider Authentication
+*Emerald-themed authentication interface supporting email/password and OAuth with server-side cookie sessions.*
+
+![Authentication](images/login.png)
 
 ---
 
 ## Deployment
 
-Echo Shelf is designed for one-click deployment on [Vercel](https://vercel.com/):
+Echo Shelf is deployed to production on [Vercel](https://vercel.com/):
+- **Live Production URL**: [https://echo-shelf-three.vercel.app/](https://echo-shelf-three.vercel.app/)
 
-1. Push your repository to GitHub.
+### Deploying Your Own Instance
+
+1. Push your repository to GitHub:
+   ```bash
+   git clone https://github.com/sheda3838/echo-shelf.git
+   ```
 2. Import the project into Vercel.
-3. Configure the **Required Environment Variables** in the Vercel project settings:
+3. Configure the **Required Environment Variables** in your Vercel project settings:
    - `NEXT_PUBLIC_SANITY_PROJECT_ID`
    - `NEXT_PUBLIC_SANITY_DATASET`
    - `SANITY_API_WRITE_TOKEN`
@@ -354,5 +419,5 @@ Echo Shelf is designed for one-click deployment on [Vercel](https://vercel.com/)
    - *(Optional)* `YOUTUBE_API_KEY`, `GNEWS_API_KEY`, `GITHUB_TOKEN`, `GITLAB_TOKEN`
 4. Deploy.
 5. In your Supabase Dashboard:
-   - Update **Site URL** to your production Vercel domain (e.g., `https://your-app.vercel.app`).
-   - Add `https://your-app.vercel.app/auth/callback` to **Redirect URLs**.
+   - Update **Site URL** to your production Vercel domain (`https://echo-shelf-three.vercel.app` or your custom domain).
+   - Add `https://echo-shelf-three.vercel.app/auth/callback` to **Redirect URLs**.
