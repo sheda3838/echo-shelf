@@ -66,13 +66,36 @@ export async function generateKnowledgeClustersAction(): Promise<GenerateCluster
 
     // 3. Prepare lightweight metadata only (no full note bodies, no raw files, no images)
     const allowedItemIds = new Set(items.map((i) => i._id));
-    const itemsForGroq = items.map((i) => ({
-      _id: i._id,
-      title: i.title,
-      description: i.description || "",
-      tags: i.tags || [],
-      contentType: i.contentType || "note",
-    }));
+    const itemsForGroq = items.map((i) => {
+      const itemPayload: Record<string, unknown> = {
+        _id: i._id,
+        title: i.title,
+        contentType: i.contentType || "note",
+      };
+
+      if (i.description) {
+        const trimmedDesc = i.description.trim();
+        if (trimmedDesc) {
+          // Truncate description to approx 100-120 characters to keep prompt compact
+          itemPayload.description =
+            trimmedDesc.length > 120
+              ? `${trimmedDesc.slice(0, 117)}...`
+              : trimmedDesc;
+        }
+      }
+
+      if (i.tags && Array.isArray(i.tags)) {
+        const cleanTags = i.tags
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean)
+          .slice(0, 6);
+        if (cleanTags.length > 0) {
+          itemPayload.tags = cleanTags;
+        }
+      }
+
+      return itemPayload;
+    });
 
     // 4. Verify Groq API configuration
     const apiKey = process.env.GROQ_API_KEY;
@@ -86,37 +109,30 @@ export async function generateKnowledgeClustersAction(): Promise<GenerateCluster
     }
 
     // 5. Build prompt
-    const systemPrompt = `You are organizing a personal knowledge library into meaningful thematic clusters.
-Group saved items based on actual conceptual relationships, not superficial word overlap.
-Create useful themes such as:
-- DevOps & Containers
-- Web Development
-- AI & Knowledge Systems
-- Career Development
-- Cloud & AWS
-(These are examples only. Determine themes from the actual content).
+    const systemPrompt = `You are organizing a personal knowledge library into meaningful thematic clusters based on conceptual relationships.
 
 Rules:
-1. Do not force every item into a cluster if it does not fit meaningfully.
-2. A saved item may appear in more than one cluster when genuinely useful (many-to-many).
-3. Minimum 2 items per cluster (avoid one-item clusters).
-4. Avoid creating a cluster for every minor subtopic.
-5. Avoid dumping everything into one giant cluster.
-6. Target around 2-6 clusters depending on the data.
-7. Return strict JSON matching this exact structure:
+1. Identify natural themes from the saved items. Prefer 4-6 distinct clusters when the library contains enough clearly separable themes.
+2. Maximum 6 clusters. Do NOT force exactly 6 clusters if fewer genuine themes exist.
+3. Minimum 2 items per cluster (never create 1-item clusters).
+4. Merge themes only when genuinely closely related; avoid overly broad catch-all clusters.
+5. Do not force every saved item into a cluster if it does not fit.
+6. An item may belong to multiple clusters when genuinely useful (many-to-many).
+7. Keep cluster summaries to 1 concise sentence explaining the conceptual connection.
+8. Include at most 4 tags per cluster.
+9. Return JSON only matching this exact schema:
 {
   "clusters": [
     {
       "title": "Theme Title",
-      "summary": "Clear, concise 1-2 sentence thematic summary explaining why these items relate.",
+      "summary": "One concise sentence explaining why these items relate.",
       "itemIds": ["valid-id-1", "valid-id-2"],
-      "tags": ["topic1", "topic2"]
+      "tags": ["tag1", "tag2"]
     }
   ]
 }`;
 
-    const userPrompt = `Saved Items Library (${itemsForGroq.length} items):
-${JSON.stringify(itemsForGroq, null, 2)}`;
+    const userPrompt = `Saved Items Library (${itemsForGroq.length} items):\n${JSON.stringify(itemsForGroq)}`;
 
     // 6. Invoke Groq API
     let rawContent: string | null = null;
@@ -130,13 +146,64 @@ ${JSON.stringify(itemsForGroq, null, 2)}`;
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
+        max_completion_tokens: 4096,
+        reasoning_effort: "low",
       });
 
       rawContent = completion.choices[0]?.message?.content || null;
-    } catch (groqErr) {
+    } catch (groqErr: unknown) {
+      let failureCategory:
+        | "json_validate_failed"
+        | "rate_limit_exceeded"
+        | "timeout"
+        | "other_api_error" = "other_api_error";
+      let errorDetail = "Unknown Groq error";
+
+      if (groqErr && typeof groqErr === "object") {
+        const errAny = groqErr as {
+          status?: number;
+          code?: string;
+          message?: string;
+          error?: { code?: string; type?: string; message?: string };
+        };
+
+        const code = errAny.code || errAny.error?.code || "";
+        const message = errAny.message || errAny.error?.message || "";
+        const status = errAny.status;
+
+        if (
+          code === "json_validate_failed" ||
+          message.includes("json_validate_failed") ||
+          message.includes("Failed to generate JSON") ||
+          message.includes("Failed to validate JSON")
+        ) {
+          failureCategory = "json_validate_failed";
+        } else if (
+          code === "rate_limit_exceeded" ||
+          status === 413 ||
+          status === 429 ||
+          message.includes("rate_limit") ||
+          message.includes("Tokens per minute") ||
+          message.includes("TPM")
+        ) {
+          failureCategory = "rate_limit_exceeded";
+        } else if (
+          code === "timeout" ||
+          message.toLowerCase().includes("timeout") ||
+          message.toLowerCase().includes("timed out")
+        ) {
+          failureCategory = "timeout";
+        }
+
+        errorDetail = `[status ${status || "unknown"}] ${code || failureCategory}: ${message.slice(0, 150)}`;
+      } else if (typeof groqErr === "string") {
+        errorDetail = groqErr.slice(0, 150);
+      }
+
       console.error("[Knowledge Clusters]", {
         stage: "groq-completion-error",
-        error: groqErr instanceof Error ? groqErr.message : "Unknown error",
+        category: failureCategory,
+        detail: errorDetail,
       });
       return {
         success: false,

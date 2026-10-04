@@ -2184,3 +2184,15 @@ Semantic or near-duplicate detection remains outside the current scope.
 - TypeScript passed with 0 errors.
 - ESLint passed with 0 errors and 0 warnings.
 - Production build completed successfully.
+
+
+## 2026-10-04 — Knowledge Cluster Generation Reliability Fix
+
+- Investigated intermittent Knowledge Cluster generation failures after expanding the demo library to 41 saved items.
+- Reproduced the issue with a non-persisting diagnostic runner and traced failures to Groq JSON generation exhausting the model's completion-token budget rather than Sanity persistence or cluster validation.
+- Reduced the metadata payload sent for clustering by truncating descriptions, limiting tags, omitting empty fields, and using compact JSON serialization.
+- Configured a controlled completion budget and low reasoning effort for `openai/gpt-oss-120b`.
+- Aligned generated output to a maximum of six concise, meaningful clusters while preserving many-to-many item membership and strict item-reference validation.
+- Successful diagnostic runs consistently produced six meaningful clusters with no invalid references or JSON validation failures.
+- Subsequent diagnostic requests were blocked only by the Groq organization's daily token quota, confirming the original clustering reliability issue was resolved.
+- TypeScript, ESLint, and the production build all passed after the fix.

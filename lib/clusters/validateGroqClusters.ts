@@ -25,7 +25,7 @@ export interface ClusterValidationResult {
 }
 
 export const MIN_ITEMS_PER_CLUSTER = 2;
-export const MAX_CLUSTERS = 8;
+export const MAX_CLUSTERS = 6;
 
 export function slugify(text: string): string {
   return text
