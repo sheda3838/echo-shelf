@@ -1651,6 +1651,7 @@ Example structure:
     }
   ]
 }
+```
 
 
 ## 2026-10-01 — Contextual Rediscovery
