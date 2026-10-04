@@ -13,7 +13,8 @@
     "test:rediscovery": "tsx --env-file=.env.local scripts/verify-rediscovery.ts",
     "test:duplicates": "tsx --env-file=.env.local scripts/verify-duplicate-detection.ts",
     "test:auth": "tsx --env-file=.env.local scripts/verify-auth.ts",
-    "test:isolation": "tsx --env-file=.env.local scripts/verify-user-isolation.ts"
+    "test:isolation": "tsx --env-file=.env.local scripts/verify-user-isolation.ts",
+    "wipe": "tsx --env-file=.env.local scripts/wipe-test-data.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
