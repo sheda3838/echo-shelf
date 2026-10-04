@@ -6,6 +6,12 @@ import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 import SmartConnections, { type ConnectionRecord } from "./smart-connections";
 import NavBar from "../../components/nav-bar";
+import {
+  StarIcon,
+  ExternalLinkIcon,
+  ContentTypeIcon,
+  getContentTypeBadgeColor,
+} from "../../components/icons";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -159,18 +165,19 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
   const contentTypeUpper = (item.contentType || "OTHER").toUpperCase();
   const savedDateFormatted = formatDate(item.savedAt);
   const imageUrl = item.image?.asset?.url || (item.image ? urlFor(item.image).url() : undefined);
+  const badgeStyle = getContentTypeBadgeColor(item.contentType);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Global Navigation */}
         <NavBar current="item" />
 
         {/* Back Link */}
-        <div className="mb-6 -mt-2">
+        <div className="-mt-2">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
           >
             <span>←</span> Back to Library
           </Link>
@@ -182,12 +189,14 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
           <div className="p-6 sm:p-8 space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase border ${badgeStyle}`}>
+                  <ContentTypeIcon contentType={item.contentType} className="w-3.5 h-3.5" />
                   {contentTypeUpper}
                 </span>
                 {item.isFavorite && (
-                  <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                    ★ Favorite
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/60">
+                    <StarIcon filled className="w-3.5 h-3.5 text-amber-500 fill-amber-500" title="Favorite" />
+                    <span>Favorite</span>
                   </span>
                 )}
               </div>
@@ -212,7 +221,7 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                 {item.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/60"
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/60 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
                   >
                     #{tag}
                   </span>
@@ -249,10 +258,10 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                       href={item.source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shrink-0 self-start sm:self-center"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0 self-start sm:self-center"
                     >
                       <span>Open Original Source</span>
-                      <span>↗</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 ) : (
@@ -276,10 +285,10 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                       href={item.source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors shrink-0 self-start sm:self-center"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0 self-start sm:self-center"
                     >
                       <span>Open Repository</span>
-                      <span>↗</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 ) : (
@@ -303,10 +312,10 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                       href={item.source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors shrink-0 self-start sm:self-center"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0 self-start sm:self-center"
                     >
-                      <span>Watch on YouTube</span>
-                      <span>↗</span>
+                      <span>Watch Video</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 ) : (
@@ -337,10 +346,10 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                       href={item.source.file.asset.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0"
                     >
                       <span>Open Document</span>
-                      <span>↗</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   )}
                 </div>
@@ -377,9 +386,10 @@ export default async function SavedItemDetailPage({ params }: PageProps) {
                       href={item.source.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0"
                     >
-                      <span>Open Link ↗</span>
+                      <span>Open Link</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 )}

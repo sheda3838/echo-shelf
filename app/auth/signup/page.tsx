@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { WarningIcon, MailIcon, EyeIcon, EyeOffIcon } from "@/app/components/icons";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -102,40 +104,51 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950/5 via-zinc-50 to-zinc-50 dark:from-emerald-950/20 dark:via-zinc-950 dark:to-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
         {/* Brand Header */}
         <div className="text-center mb-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white hover:opacity-90 transition-opacity"
+            className="inline-flex flex-col items-center gap-2 group"
           >
-            <span>📚</span>
-            <span>Echo Shelf</span>
+            <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-emerald-500/30 shadow-md group-hover:border-emerald-500/60 transition-colors">
+              <Image
+                src="/logo.png"
+                alt="Echo Shelf"
+                width={48}
+                height={48}
+                priority
+                className="object-contain w-full h-full"
+              />
+            </div>
+            <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-700 dark:from-white dark:via-emerald-100 dark:to-emerald-400 bg-clip-text text-transparent">
+              Echo Shelf
+            </span>
           </Link>
-          <h1 className="mt-4 text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+          <h1 className="mt-3 text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             Create your account
           </h1>
-          <p className="mt-1.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
             Start building a knowledge shelf that connects ideas over time.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-emerald-950/10 dark:border-emerald-500/15 rounded-2xl p-6 sm:p-8 shadow-sm">
           {isConfirmationRequired ? (
             <div className="text-center py-4">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-2xl">
-                ✉️
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+                <MailIcon className="w-6 h-6" />
               </div>
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">
                 Check your email
               </h2>
               <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
-                We sent a confirmation link to <span className="font-semibold text-zinc-900 dark:text-zinc-200">{email}</span>. Please click the link to activate your account.
+                We sent a confirmation link to <span className="font-semibold text-emerald-800 dark:text-emerald-300">{email}</span>. Please click the link to activate your account.
               </p>
               <Link
                 href="/auth/login"
-                className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors shadow-xs"
               >
                 Back to Sign In
               </Link>
@@ -145,9 +158,9 @@ export default function SignUpPage() {
               {errorMessage && (
                 <div
                   role="alert"
-                  className="mb-5 p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 text-xs sm:text-sm flex items-start gap-2.5"
+                  className="mb-5 p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 text-xs sm:text-sm flex items-start gap-2.5"
                 >
-                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <WarningIcon className="shrink-0 w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5" />
                   <span>{errorMessage}</span>
                 </div>
               )}
@@ -168,7 +181,7 @@ export default function SignUpPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ada Lovelace"
                     disabled={isLoading || isOAuthLoading !== null}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-colors disabled:opacity-50"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors disabled:opacity-50"
                   />
                 </div>
 
@@ -187,7 +200,7 @@ export default function SignUpPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ada@example.com"
                     disabled={isLoading || isOAuthLoading !== null}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-colors disabled:opacity-50"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors disabled:opacity-50"
                   />
                 </div>
 
@@ -202,9 +215,19 @@ export default function SignUpPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-[11px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                     >
-                      {showPassword ? "Hide" : "Show"}
+                      {showPassword ? (
+                        <>
+                          <EyeOffIcon className="w-3 h-3" />
+                          <span>Hide</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeIcon className="w-3 h-3" />
+                          <span>Show</span>
+                        </>
+                      )}
                     </button>
                   </div>
                   <input
@@ -216,7 +239,7 @@ export default function SignUpPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     disabled={isLoading || isOAuthLoading !== null}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-colors disabled:opacity-50"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors disabled:opacity-50"
                   />
                   <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                     Must be at least 6 characters.
@@ -226,11 +249,11 @@ export default function SignUpPage() {
                 <button
                   type="submit"
                   disabled={isLoading || isOAuthLoading !== null}
-                  className="w-full mt-2 py-2.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-sm shadow-xs transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full mt-2 py-2.5 px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <svg className="animate-spin h-4 w-4 text-emerald-100" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
@@ -248,7 +271,7 @@ export default function SignUpPage() {
                   <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white dark:bg-zinc-900 px-3 text-zinc-400">
+                  <span className="bg-white dark:bg-zinc-900 px-3 text-zinc-400 font-medium">
                     OR
                   </span>
                 </div>
@@ -260,7 +283,7 @@ export default function SignUpPage() {
                   type="button"
                   onClick={() => handleOAuth("google")}
                   disabled={isLoading || isOAuthLoading !== null}
-                  className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
+                  className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
                 >
                   {isOAuthLoading === "google" ? (
                     <span className="text-xs text-zinc-500">Connecting to Google...</span>
@@ -281,7 +304,7 @@ export default function SignUpPage() {
                   type="button"
                   onClick={() => handleOAuth("github")}
                   disabled={isLoading || isOAuthLoading !== null}
-                  className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
+                  className="w-full py-2.5 px-4 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-emerald-50/50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50"
                 >
                   {isOAuthLoading === "github" ? (
                     <span className="text-xs text-zinc-500">Connecting to GitHub...</span>
@@ -301,7 +324,7 @@ export default function SignUpPage() {
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-semibold text-zinc-900 dark:text-zinc-100 underline hover:opacity-80 transition-opacity"
+                  className="font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 underline underline-offset-2 transition-colors"
                 >
                   Sign in
                 </Link>
@@ -313,3 +336,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+

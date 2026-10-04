@@ -5,6 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import NavBar from "../components/nav-bar";
 import { triggerRediscoveryAction } from "./rediscover-actions";
+import {
+  RediscoverIcon,
+  ClustersIcon,
+  SparklesIcon,
+  RadarIcon,
+  ExternalLinkIcon,
+  CheckIcon,
+  InfoIcon,
+  WarningIcon,
+} from "../components/icons";
 
 export interface RediscoverySavedItemRef {
   _id: string;
@@ -128,7 +138,7 @@ export default function RediscoverView({
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Navigation Bar */}
         <NavBar current="rediscover" />
 
@@ -136,12 +146,14 @@ export default function RediscoverView({
         <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="text-xl">🌐</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-300/60 dark:border-emerald-700/60 flex items-center justify-center text-emerald-800 dark:text-emerald-300">
+                <RediscoverIcon className="w-4 h-4" />
+              </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                 Rediscover
               </h1>
               {hasResults && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {initialResults.length} relevant connection
                   {initialResults.length === 1 ? "" : "s"}
                 </span>
@@ -161,13 +173,13 @@ export default function RediscoverView({
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
                 isPending
                   ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 cursor-not-allowed"
-                  : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               }`}
             >
               {isPending ? (
                 <>
                   <svg
-                    className="animate-spin h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400"
+                    className="animate-spin h-3.5 w-3.5 text-white/80"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -189,9 +201,15 @@ export default function RediscoverView({
                   <span>Checking what&apos;s happening around your knowledge...</span>
                 </>
               ) : hasResults ? (
-                <span>Check Again</span>
+                <>
+                  <RadarIcon className="w-3.5 h-3.5" />
+                  <span>Check Again</span>
+                </>
               ) : (
-                <span>Check What&apos;s Relevant Now</span>
+                <>
+                  <RadarIcon className="w-3.5 h-3.5" />
+                  <span>Check What&apos;s Relevant Now</span>
+                </>
               )}
             </button>
           </div>
@@ -204,14 +222,18 @@ export default function RediscoverView({
               feedback.type === "success"
                 ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                 : feedback.type === "info"
-                ? "bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800"
-                : "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800"
+                ? "bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 dark:border-teal-800"
+                : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="font-bold">
-                {feedback.type === "success" ? "✓" : feedback.type === "info" ? "ℹ" : "✕"}
-              </span>
+              {feedback.type === "success" ? (
+                <CheckIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              ) : feedback.type === "info" ? (
+                <InfoIcon className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+              ) : (
+                <WarningIcon className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              )}
               <span>{feedback.message}</span>
             </div>
             <button
@@ -226,9 +248,11 @@ export default function RediscoverView({
 
         {/* State 1: No clusters yet */}
         {!hasClusters && !hasResults ? (
-          <div className="p-10 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-center space-y-3 py-14">
-            <span className="text-3xl block">✨</span>
-            <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">
+          <div className="p-10 rounded-2xl border border-dashed border-emerald-950/15 dark:border-emerald-500/20 bg-white dark:bg-zinc-900/50 text-center space-y-3 py-14">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shadow-xs">
+              <ClustersIcon className="w-7 h-7" />
+            </div>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
               Generate Knowledge Clusters first so Echo Shelf knows which topics to monitor.
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
@@ -237,9 +261,10 @@ export default function RediscoverView({
             <div className="pt-2">
               <Link
                 href="/clusters"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs focus:ring-2 focus:ring-emerald-500 transition-all"
               >
-                <span>Go to Clusters →</span>
+                <span>Go to Clusters</span>
+                <span>→</span>
               </Link>
             </div>
           </div>
@@ -261,7 +286,7 @@ export default function RediscoverView({
                       RELEVANT NOW
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800/80">
                         {item.relevance.toUpperCase()} MATCH
                       </span>
                       <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
@@ -320,9 +345,9 @@ export default function RediscoverView({
                   </div>
 
                   {/* Why This Matters to Your Shelf Section (Primary emphasis) */}
-                  <div className="rounded-xl p-4 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60 space-y-1.5">
+                  <div className="rounded-xl p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 dark:border-emerald-500/30 space-y-1.5">
                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5">
-                      <span>💡</span>
+                      <SparklesIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Why this matters to your shelf</span>
                     </h3>
                     <p className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
@@ -370,20 +395,20 @@ export default function RediscoverView({
                         href={item.articleUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
                       >
                         <span>Read Article</span>
-                        <span>↗</span>
+                        <ExternalLinkIcon className="w-3.5 h-3.5" />
                       </a>
                       {item.savedItem && (
                         <a
                           href={`/item/${item.savedItem._id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                         >
                           <span>View Saved Item</span>
-                          <span>↗</span>
+                          <ExternalLinkIcon className="w-3.5 h-3.5" />
                         </a>
                       )}
                     </div>
@@ -394,9 +419,11 @@ export default function RediscoverView({
           </div>
         ) : (
           /* State 3: Initial Empty State before any check */
-          <div className="p-10 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-center space-y-3 py-16">
-            <span className="text-3xl block">📡</span>
-            <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">
+          <div className="p-10 rounded-2xl border border-dashed border-emerald-950/15 dark:border-emerald-500/20 bg-white dark:bg-zinc-900/50 text-center space-y-3 py-16">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shadow-xs">
+              <RadarIcon className="w-7 h-7" />
+            </div>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
               Nothing has been checked yet.
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
@@ -407,8 +434,9 @@ export default function RediscoverView({
                 type="button"
                 onClick={handleCheckNews}
                 disabled={isPending}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs focus:ring-2 focus:ring-emerald-500 transition-all"
               >
+                <RadarIcon className="w-3.5 h-3.5" />
                 <span>Check What&apos;s Relevant Now</span>
               </button>
             </div>

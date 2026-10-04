@@ -1,4 +1,4 @@
-import {SparklesIcon} from '@sanity/icons'
+import {SparklesIcon} from '@sanity/icons/Sparkles'
 import {defineField, defineType} from 'sanity'
 
 export const rediscoveryResultType = defineType({

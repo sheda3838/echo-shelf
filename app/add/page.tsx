@@ -14,6 +14,14 @@ import {
   checkDuplicateAction,
   type DuplicateCheckResult,
 } from "./duplicate-actions";
+import {
+  SparklesIcon,
+  InfoIcon,
+  WarningIcon,
+  CheckIcon,
+  ConnectionIcon,
+  ExternalLinkIcon,
+} from "../components/icons";
 
 interface FormErrors {
   contentType?: string;
@@ -726,15 +734,15 @@ export default function AddItemPage() {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-6">
         {/* Navigation & Header */}
         <NavBar current="add" />
-        <header className="mb-8 -mt-2">
+        <header className="mb-6 -mt-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Add to Echo Shelf
           </h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
             Save articles, videos, code, notes, and visual resources to your knowledge lake.
           </p>
         </header>
@@ -743,10 +751,10 @@ export default function AddItemPage() {
         {successMessage && (
           <div
             role="alert"
-            className="mb-6 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs"
           >
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+            <div className="flex items-center gap-2.5">
+              <CheckIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <p className="text-sm font-medium">{successMessage}</p>
             </div>
             <div className="flex items-center gap-3 text-xs">
@@ -772,8 +780,9 @@ export default function AddItemPage() {
         {errors.general && (
           <div
             role="alert"
-            className="mb-6 p-4 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200"
+            className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 flex items-start gap-2.5"
           >
+            <WarningIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <p className="text-sm font-medium">{errors.general}</p>
           </div>
         )}
@@ -783,174 +792,238 @@ export default function AddItemPage() {
           onSubmit={handleSubmit}
           onKeyDown={handleFormKeyDown}
           noValidate
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 sm:p-8 shadow-sm space-y-6"
+          className="bg-white dark:bg-zinc-900 border border-emerald-950/10 dark:border-emerald-500/15 rounded-2xl p-6 sm:p-8 md:p-9 shadow-sm space-y-7"
         >
-          {/* 1. Content Type Selection (8 simplified types) */}
-          <div>
-            <label
-              htmlFor="contentType"
-              className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
-            >
-              Content Type <span className="text-rose-500">*</span>
-            </label>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-              Select the type of content you are saving. The source fields below will adjust dynamically.
-            </p>
-            <select
-              id="contentType"
-              name="contentType"
-              value={contentType}
-              onChange={(e) => {
-                const nextType = e.target.value as ContentType;
-                setContentType(nextType);
-                clearDuplicateWarning();
-                setErrors((prev) => ({
-                  ...prev,
-                  sourceUrl: undefined,
-                  sourceFile: undefined,
-                  sourceText: undefined,
-                }));
-                invalidateAiSuggestions(sourceUrl, nextType, sourceText, selectedDocumentFile, selectedImageFile);
-              }}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            >
-              {CONTENT_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label} — {type.hint}
-                </option>
-              ))}
-            </select>
-            {errors.contentType && (
-              <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                {errors.contentType}
-              </p>
-            )}
-          </div>
-
-          <hr className="border-zinc-200 dark:border-zinc-800" />
-
-          {/* 2. Dynamic Source Fields */}
+          {/* Section 1: Classification & Source (2-Column Grid on Desktop) */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Source Information
+            <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+              1. Content & Source
             </h2>
 
-            {/* URL Source (Article / Video / Repo / URL / Other) */}
-            {(isUrlType || isOther) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              {/* Left Column: Content Type Selection */}
               <div>
                 <label
-                  htmlFor="sourceUrl"
-                  className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
+                  htmlFor="contentType"
+                  className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
                 >
-                  Source URL {isUrlType && <span className="text-rose-500">*</span>}
-                  {isOther && <span className="text-xs text-zinc-400 font-normal"> (optional)</span>}
-                </label>
-                <input
-                  type="url"
-                  id="sourceUrl"
-                  name="sourceUrl"
-                  value={sourceUrl}
-                  onChange={(e) => {
-                    const nextUrl = e.target.value;
-                    setSourceUrl(nextUrl);
-                    clearDuplicateWarning();
-                    if (errors.sourceUrl) {
-                      setErrors((prev) => ({ ...prev, sourceUrl: undefined }));
-                    }
-                    invalidateAiSuggestions(nextUrl, contentType, sourceText);
-                  }}
-                  placeholder="https://example.com/article-or-resource"
-                  className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    errors.sourceUrl
-                      ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
-                      : "border-zinc-300 dark:border-zinc-700"
-                  }`}
-                />
-                {errors.sourceUrl && (
-                  <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                    {errors.sourceUrl}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* File Upload for Image */}
-            {isImage && (
-              <div>
-                <label
-                  htmlFor="sourceFile"
-                  className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
-                >
-                  Upload Image <span className="text-rose-500">*</span>
+                  Content Type <span className="text-rose-500">*</span>
                 </label>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                  Photos, screenshots, diagrams, illustrations. PNG, JPG, JPEG, WEBP. Up to 10 MB. Stored in Sanity Assets.
+                  Select the type of content you are saving.
                 </p>
-                <input
-                  type="file"
-                  id="sourceFile"
-                  name="sourceFile"
-                  ref={sourceFileInputRef}
-                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                <select
+                  id="contentType"
+                  name="contentType"
+                  value={contentType}
                   onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSelectedImageFile(file);
+                    const nextType = e.target.value as ContentType;
+                    setContentType(nextType);
                     clearDuplicateWarning();
-                    if (errors.sourceFile) {
-                      setErrors((prev) => ({ ...prev, sourceFile: undefined }));
-                    }
-                    invalidateAiSuggestions(sourceUrl, contentType, sourceText, selectedDocumentFile, file);
+                    setErrors((prev) => ({
+                      ...prev,
+                      sourceUrl: undefined,
+                      sourceFile: undefined,
+                      sourceText: undefined,
+                    }));
+                    invalidateAiSuggestions(sourceUrl, nextType, sourceText, selectedDocumentFile, selectedImageFile);
                   }}
-                  className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
-                />
-                {errors.sourceFile && (
-                  <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                    {errors.sourceFile}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* File Upload for Document */}
-            {isDocument && (
-              <div>
-                <label
-                  htmlFor="sourceFile"
-                  className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors"
                 >
-                  Upload Document <span className="text-rose-500">*</span>
-                </label>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                  PDF (.pdf), Word (.docx), PowerPoint (.pptx), Excel (.xlsx). Up to 20 MB. Stored in Sanity File Assets.
-                </p>
-                <input
-                  type="file"
-                  id="sourceFile"
-                  name="sourceFile"
-                  ref={sourceFileInputRef}
-                  accept=".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSelectedDocumentFile(file);
-                    clearDuplicateWarning();
-                    if (errors.sourceFile) {
-                      setErrors((prev) => ({ ...prev, sourceFile: undefined }));
-                    }
-                    invalidateAiSuggestions(sourceUrl, contentType, sourceText, file);
-                  }}
-                  className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
-                />
-                {errors.sourceFile && (
+                  {CONTENT_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label} — {type.hint}
+                    </option>
+                  ))}
+                </select>
+                {errors.contentType && (
                   <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                    {errors.sourceFile}
+                    {errors.contentType}
                   </p>
+                )}
+              </div>
+
+              {/* Right Column: Source URL or Primary Upload */}
+              <div>
+                {(isUrlType || isOther) && (
+                  <div>
+                    <label
+                      htmlFor="sourceUrl"
+                      className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                    >
+                      Source URL {isUrlType && <span className="text-rose-500">*</span>}
+                      {isOther && <span className="text-xs text-zinc-400 font-normal"> (optional)</span>}
+                    </label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                      Web link to the original resource or article.
+                    </p>
+                    <input
+                      type="url"
+                      id="sourceUrl"
+                      name="sourceUrl"
+                      value={sourceUrl}
+                      onChange={(e) => {
+                        const nextUrl = e.target.value;
+                        setSourceUrl(nextUrl);
+                        clearDuplicateWarning();
+                        if (errors.sourceUrl) {
+                          setErrors((prev) => ({ ...prev, sourceUrl: undefined }));
+                        }
+                        invalidateAiSuggestions(nextUrl, contentType, sourceText);
+                      }}
+                      placeholder="https://example.com/article-or-resource"
+                      className={`w-full px-3.5 py-2.5 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors ${
+                        errors.sourceUrl
+                          ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
+                          : "border-zinc-300 dark:border-zinc-700"
+                      }`}
+                    />
+                    {errors.sourceUrl && (
+                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        {errors.sourceUrl}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {isImage && (
+                  <div>
+                    <label
+                      htmlFor="sourceFile"
+                      className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                    >
+                      Upload Image <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                      PNG, JPG, JPEG, WEBP. Up to 10 MB.
+                    </p>
+                    <input
+                      type="file"
+                      id="sourceFile"
+                      name="sourceFile"
+                      ref={sourceFileInputRef}
+                      accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setSelectedImageFile(file);
+                        clearDuplicateWarning();
+                        if (errors.sourceFile) {
+                          setErrors((prev) => ({ ...prev, sourceFile: undefined }));
+                        }
+                        invalidateAiSuggestions(sourceUrl, contentType, sourceText, selectedDocumentFile, file);
+                      }}
+                      className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
+                    />
+                    {errors.sourceFile && (
+                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        {errors.sourceFile}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {isDocument && (
+                  <div>
+                    <label
+                      htmlFor="sourceFile"
+                      className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                    >
+                      Upload Document <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                      PDF, Word (.docx), PPT (.pptx), Excel (.xlsx). Up to 20 MB.
+                    </p>
+                    <input
+                      type="file"
+                      id="sourceFile"
+                      name="sourceFile"
+                      ref={sourceFileInputRef}
+                      accept=".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setSelectedDocumentFile(file);
+                        clearDuplicateWarning();
+                        if (errors.sourceFile) {
+                          setErrors((prev) => ({ ...prev, sourceFile: undefined }));
+                        }
+                        invalidateAiSuggestions(sourceUrl, contentType, sourceText, file);
+                      }}
+                      className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
+                    />
+                    {errors.sourceFile && (
+                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        {errors.sourceFile}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {isNote && (
+                  <div>
+                    <label
+                      htmlFor="previewImage"
+                      className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                    >
+                      Preview Image <span className="text-xs text-zinc-400 font-normal">(optional cover)</span>
+                    </label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                      Optional illustration or thumbnail for your note.
+                    </p>
+                    <input
+                      type="file"
+                      id="previewImage"
+                      name="previewImage"
+                      ref={previewImageInputRef}
+                      accept="image/*"
+                      className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional preview image for URL types & other sitting nicely side-by-side */}
+            {!isImage && !isNote && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
+                <div>
+                  <label
+                    htmlFor="previewImage"
+                    className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
+                  >
+                    Preview Image <span className="text-xs text-zinc-400 font-normal">(optional cover image)</span>
+                  </label>
+                  <input
+                    type="file"
+                    id="previewImage"
+                    name="previewImage"
+                    ref={previewImageInputRef}
+                    accept="image/*"
+                    className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
+                  />
+                </div>
+                {isOther && (
+                  <div>
+                    <label
+                      htmlFor="sourceFile"
+                      className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
+                    >
+                      Source File <span className="text-xs text-zinc-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="file"
+                      id="sourceFile"
+                      name="sourceFile"
+                      ref={sourceFileInputRef}
+                      className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
+                    />
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Textarea for Note */}
+            {/* Textarea for Note / Other (Full Width for comfortable editing) */}
             {(isNote || isOther) && (
-              <div>
+              <div className="pt-2">
                 <label
                   htmlFor="sourceText"
                   className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
@@ -975,7 +1048,7 @@ export default function AddItemPage() {
                     }
                   }}
                   placeholder={isNote ? "Paste or write note content here..." : "Optional text source..."}
-                  className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs ${
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 font-mono text-xs ${
                     errors.sourceText
                       ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
                       : "border-zinc-300 dark:border-zinc-700"
@@ -988,70 +1061,37 @@ export default function AddItemPage() {
                 )}
               </div>
             )}
-
-            {/* Optional Source File for 'other' */}
-            {isOther && (
-              <div>
-                <label
-                  htmlFor="sourceFile"
-                  className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
-                >
-                  Source File <span className="text-xs text-zinc-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="file"
-                  id="sourceFile"
-                  name="sourceFile"
-                  ref={sourceFileInputRef}
-                  className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
-                />
-              </div>
-            )}
-
-            {/* Optional Preview Image for non-image types */}
-            {!isImage && (
-              <div className="pt-2">
-                <label
-                  htmlFor="previewImage"
-                  className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
-                >
-                  Preview Image <span className="text-xs text-zinc-400 font-normal">(optional cover image)</span>
-                </label>
-                <input
-                  type="file"
-                  id="previewImage"
-                  name="previewImage"
-                  ref={previewImageInputRef}
-                  accept="image/*"
-                  className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-200 dark:hover:file:bg-zinc-700"
-                />
-              </div>
-            )}
           </div>
 
-          <hr className="border-zinc-200 dark:border-zinc-800" />
+          <hr className="border-emerald-950/10 dark:border-emerald-500/15" />
 
-          {/* 3. Metadata Fields with Smart Capture AI */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                    Metadata
-                  </h2>
-                  {isAiAssisted && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-                      ✨ AI-assisted
-                    </span>
-                  )}
+          {/* Section 2: Smart Capture AI Panel */}
+          <div className="p-4 sm:p-5 rounded-xl border border-emerald-500/25 bg-emerald-50/50 dark:bg-emerald-950/25 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-300/60 dark:border-emerald-700/60 flex items-center justify-center text-emerald-800 dark:text-emerald-300 shrink-0">
+                  <SparklesIcon className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Review and customize how this item is titled and indexed.
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Smart Capture
+                    </h2>
+                    {isAiAssisted && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
+                        <SparklesIcon className="w-3 h-3" />
+                        <span>AI-assisted</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                    Automatically inspect source content to suggest title, summary, and contextual tags.
+                  </p>
+                </div>
               </div>
 
-              {/* Smart Capture Action Buttons (placed side-by-side) */}
-              <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+              {/* Smart Capture Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                 <button
                   type="button"
                   onClick={handleGenerateWithAi}
@@ -1081,12 +1121,12 @@ export default function AddItemPage() {
                       ? "Read webpage and generate metadata with Groq AI"
                       : "Suggest title, description, and tags with Groq AI"
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:hover:bg-violet-900/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white shadow-xs hover:shadow-emerald-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 whitespace-nowrap"
                 >
                   {isAiGenerating ? (
                     <>
                       <svg
-                        className="animate-spin h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
+                        className="animate-spin h-3.5 w-3.5 text-white"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -1098,36 +1138,23 @@ export default function AddItemPage() {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         />
                       </svg>
-                      <span>
-                        {isImage && hasImageFile
-                          ? "Analyzing image and generating suggestions..."
-                          : isDocument && hasDocumentFile
-                          ? "Reading document and generating suggestions..."
-                          : isVideo && isValidSourceUrl
-                          ? "Reading YouTube video metadata and generating suggestions..."
-                          : isRepo && isValidSourceUrl
-                          ? "Reading repository and generating metadata..."
-                          : isArticleOrUrl && isValidSourceUrl
-                          ? "Reading page and generating metadata..."
-                          : "Generating..."}
-                      </span>
+                      <span>Generating...</span>
                     </>
                   ) : (
                     <>
-                      <span className="text-sm">✨</span>
+                      <SparklesIcon className="w-3.5 h-3.5" />
                       <span>Generate with AI</span>
                     </>
                   )}
                 </button>
 
-                {/* Clear AI Suggestions Button (next to Generate with AI button) */}
                 {hasAiSuggestions && (
                   <button
                     type="button"
                     onClick={handleClearAiSuggestions}
                     disabled={isAiGenerating || isPending}
                     title="Clear only the suggestions added by AI"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-zinc-400 whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   >
                     <span>✕</span>
                     <span>Clear AI Suggestions</span>
@@ -1142,12 +1169,16 @@ export default function AddItemPage() {
                 role="status"
                 className={`p-3 rounded-lg text-xs flex items-center justify-between gap-2 border transition-all ${
                   aiFeedback.type === "success"
-                    ? "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800 text-violet-900 dark:text-violet-200"
+                    ? "bg-emerald-100/70 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200"
                     : "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span>{aiFeedback.type === "success" ? "✨" : "ℹ️"}</span>
+                  {aiFeedback.type === "success" ? (
+                    <SparklesIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <InfoIcon className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+                  )}
                   <p className="font-medium">{aiFeedback.text}</p>
                 </div>
                 <button
@@ -1159,51 +1190,117 @@ export default function AddItemPage() {
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Title */}
-            <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
-              >
-                Title <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title) {
-                    setErrors((prev) => ({ ...prev, title: undefined }));
-                  }
-                  invalidateCandidates();
-                }}
-                placeholder="Descriptive title for this saved item"
-                className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  errors.title
-                    ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
-                    : "border-zinc-300 dark:border-zinc-700"
-                }`}
-              />
-              {errors.title && (
-                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                  {errors.title}
+          <hr className="border-emerald-950/10 dark:border-emerald-500/15" />
+
+          {/* Section 3: Metadata (Title & Tags side-by-side, Description wide below) */}
+          <div className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+              2. Metadata & Categorization
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              {/* Title Field */}
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                >
+                  Title <span className="text-rose-500">*</span>
+                </label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                  Descriptive title for this saved item.
                 </p>
-              )}
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (errors.title) {
+                      setErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                    invalidateCandidates();
+                  }}
+                  placeholder="Descriptive title for this saved item"
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors ${
+                    errors.title
+                      ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
+                      : "border-zinc-300 dark:border-zinc-700"
+                  }`}
+                />
+                {errors.title && (
+                  <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    {errors.title}
+                  </p>
+                )}
+              </div>
+
+              {/* Interactive Tags Entry */}
+              <div>
+                <label
+                  htmlFor="tagInput"
+                  className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
+                >
+                  Tags <span className="text-xs text-zinc-400 font-normal">(press Enter or comma to add)</span>
+                </label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                  Keywords for fast clustering and rediscovery.
+                </p>
+
+                {/* Tag Badges Container + Input */}
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-600 min-h-[44px] transition-colors">
+                  {tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
+                    >
+                      <span>#{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(idx)}
+                        aria-label={`Remove tag ${tag}`}
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center font-bold text-xs transition-colors"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    id="tagInput"
+                    value={tagInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes(",")) {
+                        const parts = val.split(",");
+                        for (const part of parts) {
+                          addTag(part);
+                        }
+                      } else {
+                        setTagInput(val);
+                      }
+                    }}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder={tags.length === 0 ? "Type tag & press Enter (e.g. nextjs, sanity)..." : "Add tag..."}
+                    className="flex-1 min-w-[140px] bg-transparent text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 px-1 py-0.5"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Description */}
+            {/* Description (Spanning Full Width) */}
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
+                className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1"
               >
                 Description <span className="text-rose-500">*</span>
               </label>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1.5">
-                Summary or notes explaining what this item is and why you saved it.
+                Summary or takeaways explaining what this item is and why you saved it.
               </p>
               <textarea
                 id="description"
@@ -1218,7 +1315,7 @@ export default function AddItemPage() {
                   invalidateCandidates();
                 }}
                 placeholder="Explain the key takeaways or context..."
-                className={`w-full px-3.5 py-2 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                className={`w-full px-3.5 py-2.5 rounded-lg border text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-600 transition-colors ${
                   errors.description
                     ? "border-rose-400 dark:border-rose-600 ring-1 ring-rose-400"
                     : "border-zinc-300 dark:border-zinc-700"
@@ -1230,78 +1327,26 @@ export default function AddItemPage() {
                 </p>
               )}
             </div>
-
-            {/* Interactive Tags Entry */}
-            <div>
-              <label
-                htmlFor="tagInput"
-                className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1"
-              >
-                Tags <span className="text-xs text-zinc-400 font-normal">(press Enter or comma to add)</span>
-              </label>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                Categorize this item with keywords. Duplicate tags are automatically ignored.
-              </p>
-
-              {/* Tag Badges Container + Input */}
-              <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 min-h-[42px] transition-colors">
-                {tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
-                  >
-                    <span>#{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeTag(idx)}
-                      aria-label={`Remove tag ${tag}`}
-                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center font-bold text-xs transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <input
-                  type="text"
-                  id="tagInput"
-                  value={tagInput}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val.includes(",")) {
-                      const parts = val.split(",");
-                      for (const part of parts) {
-                        addTag(part);
-                      }
-                    } else {
-                      setTagInput(val);
-                    }
-                  }}
-                  onKeyDown={handleTagKeyDown}
-                  placeholder={tags.length === 0 ? "Type tag & press Enter (e.g. nextjs, sanity)..." : "Add tag..."}
-                  className="flex-1 min-w-[140px] bg-transparent text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 px-1 py-0.5"
-                />
-              </div>
-            </div>
           </div>
 
-          <hr className="border-zinc-200 dark:border-zinc-800" />
+          <hr className="border-emerald-950/10 dark:border-emerald-500/15" />
 
-          {/* 4. Smart Connections: Pre-Save Potentially Related Candidates */}
+          {/* Section 4: Smart Connections: Pre-Save Potentially Related Candidates */}
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                    Potentially Related
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                    3. Potentially Related Items
                   </h2>
                   {connectionCandidates.length > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       {connectionCandidates.length} candidate{connectionCandidates.length > 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Based on metadata similarity. Final connections are verified after saving.
+                  Pre-save candidate check based on title and tags. Final connections are verified after saving.
                 </p>
               </div>
 
@@ -1316,12 +1361,12 @@ export default function AddItemPage() {
                       ? "Enter a title or description first to find related items"
                       : "Search existing library for related items"
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-zinc-400 whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 whitespace-nowrap"
                 >
                   {isShortlisting ? (
                     <>
                       <svg
-                        className="animate-spin h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400"
+                        className="animate-spin h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -1337,19 +1382,7 @@ export default function AddItemPage() {
                     </>
                   ) : (
                     <>
-                      <svg
-                        className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                      </svg>
+                      <ConnectionIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                       <span>{connectionCandidates.length > 0 ? "Refresh Related Items" : "Find Related Items"}</span>
                     </>
                   )}
@@ -1364,7 +1397,7 @@ export default function AddItemPage() {
                 className="p-3 rounded-lg text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2"
               >
                 <div className="flex items-center gap-2">
-                  <span>ℹ️</span>
+                  <InfoIcon className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                   <p className="font-medium">{candidateFeedback}</p>
                 </div>
                 <button
@@ -1377,11 +1410,11 @@ export default function AddItemPage() {
               </div>
             )}
 
-            {/* Loading indicator (when candidates list is currently empty) */}
+            {/* Loading indicator */}
             {isShortlisting && connectionCandidates.length === 0 && (
-              <div className="p-4 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/30 flex items-center justify-center gap-2.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <div className="p-4 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 flex items-center justify-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                 <svg
-                  className="animate-spin h-4 w-4 text-zinc-600 dark:text-zinc-400"
+                  className="animate-spin h-4 w-4 text-emerald-700 dark:text-emerald-400"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -1393,25 +1426,25 @@ export default function AddItemPage() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span>Looking for related items...</span>
+                <span>Searching your library for related knowledge...</span>
               </div>
             )}
 
             {/* Empty State */}
             {hasSearchedCandidates && !isShortlisting && connectionCandidates.length === 0 && !candidateFeedback && (
               <div className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/20 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
-                <span className="text-zinc-400">ℹ️</span>
+                <InfoIcon className="w-4 h-4 text-zinc-400 shrink-0" />
                 <span>No closely related saved items found.</span>
               </div>
             )}
 
-            {/* Populated Candidate Cards */}
+            {/* Populated Candidate Cards (3-column on wide screens) */}
             {connectionCandidates.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
                 {connectionCandidates.map((cand) => (
                   <div
                     key={cand._id}
-                    className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors flex flex-col justify-between"
+                    className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs hover:border-emerald-500/40 transition-colors flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -1419,7 +1452,7 @@ export default function AddItemPage() {
                           {cand.title}
                         </h3>
                         {cand.contentType && (
-                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70">
                             {cand.contentType}
                           </span>
                         )}
@@ -1451,7 +1484,7 @@ export default function AddItemPage() {
               className="p-4 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
             >
               <div className="flex items-start gap-3">
-                <span className="text-xl shrink-0 leading-none">⚠️</span>
+                <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
@@ -1498,7 +1531,7 @@ export default function AddItemPage() {
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-750 transition-colors shadow-xs"
                     >
                       <span>View Existing Item</span>
-                      <span aria-hidden="true">↗</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                     <button
                       type="button"
@@ -1515,7 +1548,7 @@ export default function AddItemPage() {
           )}
 
           {/* Form Actions */}
-          <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+          <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 border-t border-emerald-950/10 dark:border-emerald-500/15">
             <button
               type="button"
               onClick={handleReset}
@@ -1527,12 +1560,12 @@ export default function AddItemPage() {
             <button
               type="submit"
               disabled={isPending || isAiGenerating}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 dark:focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-semibold text-sm shadow-xs hover:shadow-emerald-900/20 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isPending ? (
                 <>
                   <svg
-                    className="animate-spin h-4 w-4 text-current"
+                    className="animate-spin h-4 w-4 text-emerald-100"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"

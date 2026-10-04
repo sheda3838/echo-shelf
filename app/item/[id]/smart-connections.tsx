@@ -3,6 +3,15 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { generateItemConnectionsAction } from "./connection-actions";
+import {
+  SparklesIcon,
+  ExternalLinkIcon,
+  ConnectionIcon,
+  InfoIcon,
+  CheckIcon,
+  WarningIcon,
+  getContentTypeBadgeColor,
+} from "@/app/components/icons";
 
 export interface ConnectedItem {
   _id: string;
@@ -36,7 +45,7 @@ function getStrengthBadge(strength?: string) {
       return {
         label: "MODERATE CONNECTION",
         classes:
-          "bg-sky-50 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 border-sky-200 dark:border-sky-800",
+          "bg-teal-50 text-teal-800 dark:bg-teal-950/70 dark:text-teal-300 border-teal-200 dark:border-teal-800",
       };
     case "weak":
       return {
@@ -50,26 +59,6 @@ function getStrengthBadge(strength?: string) {
         classes:
           "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
       };
-  }
-}
-
-function getContentTypeBadgeColor(type?: string): string {
-  switch (type?.toLowerCase()) {
-    case "article":
-    case "url":
-      return "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800";
-    case "repo":
-      return "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800";
-    case "video":
-      return "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800";
-    case "document":
-      return "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800";
-    case "image":
-      return "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800";
-    case "note":
-      return "bg-emerald-50 text-emerald-800 dark:text-emerald-300 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800";
-    default:
-      return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700";
   }
 }
 
@@ -149,7 +138,7 @@ export default function SmartConnections({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-base">✨</span>
+            <SparklesIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
               Smart Connections
             </h2>
@@ -176,13 +165,13 @@ export default function SmartConnections({
             className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
               isPending
                 ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 cursor-not-allowed"
-                : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
             }`}
           >
             {isPending ? (
               <>
                 <svg
-                  className="animate-spin h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400"
+                  className="animate-spin h-3.5 w-3.5 text-white/80"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -204,9 +193,15 @@ export default function SmartConnections({
                 <span>Finding meaningful connections...</span>
               </>
             ) : hasConnections ? (
-              <span>Refresh Connections</span>
+              <>
+                <SparklesIcon className="w-3.5 h-3.5" />
+                <span>Refresh Connections</span>
+              </>
             ) : (
-              <span>Generate Connections</span>
+              <>
+                <SparklesIcon className="w-3.5 h-3.5" />
+                <span>Generate Connections</span>
+              </>
             )}
           </button>
         </div>
@@ -219,11 +214,20 @@ export default function SmartConnections({
             feedback.type === "success"
               ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80"
               : feedback.type === "info"
-              ? "bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800/80"
-              : "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800/80"
+              ? "bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 dark:border-teal-800/80"
+              : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/80"
           }`}
         >
-          <span>{feedback.message}</span>
+          <div className="flex items-center gap-1.5">
+            {feedback.type === "success" ? (
+              <CheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : feedback.type === "info" ? (
+              <InfoIcon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+            ) : (
+              <WarningIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
           <button
             type="button"
             onClick={() => setFeedback(null)}
@@ -303,7 +307,7 @@ export default function SmartConnections({
                   </p>
                 )}
 
-                {/* Action Link: View Connected Item ↗ (Opens in new tab) */}
+                {/* Action Link: View Connected Item (Opens in new tab) */}
                 {connectedItem?._id && (
                   <div className="pt-1">
                     <a
@@ -312,7 +316,8 @@ export default function SmartConnections({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
                     >
-                      <span>View Connected Item ↗</span>
+                      <span>View Connected Item</span>
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 )}
@@ -321,11 +326,14 @@ export default function SmartConnections({
           })}
         </div>
       ) : (
-        <div className="p-6 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center space-y-2">
+        <div className="p-8 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center space-y-3">
+          <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+            <ConnectionIcon className="w-5 h-5" />
+          </div>
           <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
             No connections generated yet.
           </p>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-md mx-auto">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-md mx-auto leading-relaxed">
             Click &quot;Generate Connections&quot; to analyze and link this item with related knowledge in your library.
           </p>
         </div>

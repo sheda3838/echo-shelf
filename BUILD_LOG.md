@@ -1284,21 +1284,6 @@ Integrated candidate shortlisting into the `/add` pre-save workflow. Users can p
   - ESLint check (`npm run lint`) passed with 0 warnings/errors.
 
 
-  ## 2026-09-30 — Pre-Save Smart Connection Suggestions
-
-Connected the Smart Connections shortlist engine to the `/add` page.
-
-Echo Shelf now compares the current item's title, description, and tags against existing Sanity items before saving and displays likely related items under a "Potentially Related" section.
-
-The suggestions are heuristic only and do not use Groq yet.
-
-Verified manually with:
-- Docker/networking note
-- Next.js Server Actions note
-- Semantic knowledge-management note
-
-The expected related items appeared correctly, and unrelated items were not forced into the shortlist.
-
 ## 2026-09-30 — Library, Item Detail Pages & Post-Save Navigation
 
 ### What I Built
@@ -1585,6 +1570,7 @@ Expected structure:
     }
   ]
 }
+```
 
 ## 2026-10-01 — Knowledge Clusters
 
@@ -2133,7 +2119,7 @@ URL / text / file source
 Semantic or near-duplicate detection remains outside the current scope.
 
 
-## Auth + User Ownership & Isolation
+## 2026-10-02 — Authentication, User Ownership & Data Isolation
 
 - Added Supabase authentication with:
   - Email/password
@@ -2159,7 +2145,7 @@ Semantic or near-duplicate detection remains outside the current scope.
 - TypeScript and ESLint checks passed.
 
 
-## Cluster Navigation & Note Content UI Refinement
+## 2026-10-04 — Cluster Navigation & Note Content UI Refinement
 
 - Updated cluster detail item cards so saved items open in a new browser tab.
 - Kept the cluster page open in the original tab for easier browsing through multiple items.
@@ -2172,3 +2158,28 @@ Semantic or near-duplicate detection remains outside the current scope.
 - Increased responsive padding while preserving the existing read-only styling.
 - TypeScript check passed with 0 errors.
 - ESLint passed with 0 warnings/errors.
+
+
+## 2026-10-04 — Final UI Theme & Visual Consistency Pass
+
+- Completed a full application-wide visual consistency pass based on the official `public/logo.png` branding.
+- Standardized the Echo Shelf visual system around deep emerald, mint, seafoam, and subtle teal accents.
+- Integrated the official logo into navigation, authentication screens, metadata, and favicon configuration.
+- Removed remaining decorative emojis and raw unicode arrows, replacing them with consistent SVG iconography.
+- Standardized primary, secondary, warning, and error button styles across the application.
+- Unified form controls, borders, focus states, spacing, and disabled states.
+- Standardized content-type badge styling across Library, item detail, Smart Connections, Clusters, and Rediscovery.
+- Refined Library and Cluster item cards with consistent 16:9 media areas:
+  - real preview images use full-bleed `object-cover`
+  - imageless items use themed emerald placeholders with content-type icons
+- Polished the Add Item page with a wider, more efficient responsive layout and branded Smart Capture section.
+- Updated item detail and Smart Connections views to match the new brand system.
+- Harmonized Knowledge Clusters and Contextual Rediscovery with the same visual language.
+- Improved authentication screens with branded logo treatment, emerald CTAs, password visibility controls, and consistent form styling.
+- Preserved semantic warning/error colors while removing unrelated legacy accent colors.
+- Verified responsive behavior across mobile, tablet, and desktop layouts.
+- Verified keyboard focus states, icon accessibility, and readable contrast.
+- Fixed Sanity icon imports to ensure successful production Turbopack compilation.
+- TypeScript passed with 0 errors.
+- ESLint passed with 0 errors and 0 warnings.
+- Production build completed successfully.
